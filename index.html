@@ -301,11 +301,8 @@ if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx),pz=hz-Math.abs(dz)
 const rc=new THREE.Raycaster();
 function los(a,b){const d=b.clone().sub(a),L=d.length();rc.set(a,d.normalize());rc.far=L;return rc.intersectObjects(obstM).length===0}
 
-/* AUDIO SYSTEM - ŁADOWANIE NATYCHMIASTOWE */
-let ac,master,menuMusicSource;
-const audioLoader=new THREE.AudioLoader();
-const AUDIO_SAMPLES={ pain:[], gun_pistol:[], gun_rifle:[] };
-const audioBuffers={};
+/* AUDIO SYSTEM (NATYWNY) */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 const AUDIO_FILES={
   pain:[
     'dragon-studio-zombie-dying-sound-357974.mp3',
@@ -316,45 +313,40 @@ const AUDIO_FILES={
   gun_pistol:['freesound_community-perdition-1911-pistol-82365.mp3'],
   gun_rifle:['sovetsky_rastov72-ak74-sound-effect-351437.mp3']
 };
+const audioBuffers = {};
 
-// Ładujemy pliki od razu po załadowaniu strony
-for(const cat in AUDIO_FILES){
-  AUDIO_FILES[cat].forEach(file=>{
-    audioLoader.load(file,buffer=>{
-      audioBuffers[file]=buffer;
-      AUDIO_SAMPLES[cat].push(file);
-    },undefined,err=>console.warn('Błąd audio:',file));
-  });
+// Funkcja ładująca plik do pamięci, by nie było opóźnienia
+async function loadAudioToMemory(url) {
+  try {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    return await audioCtx.decodeAudioData(arrayBuffer);
+  } catch(e) {
+    console.warn("Nie można załadować audio:", url, e);
+  }
 }
 
-function initAudio(){
-  if(ac)return;
-  ac=new (window.AudioContext||window.webkitAudioContext)();
-  master=ac.createDynamicsCompressor();
-  master.threshold.value=-18;master.knee.value=6;master.ratio.value=12;
-  master.attack.value=.003;master.release.value=.12;
-  master.connect(ac.destination);
-  
-  const n=ac.sampleRate*4|0,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
-  for(let i=0;i<n;i++)d[i]=(R()-.5)*.5;
-  const src=ac.createBufferSource();src.buffer=b;src.loop=true;
-  const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=380;
-  const g=ac.createGain();g.gain.value=.012;
-  src.connect(lp).connect(g).connect(master);src.start();
-}
+// Ładujemy wszystko w tle od razu na starcie
+(async () => {
+  for (const cat in AUDIO_FILES) {
+    for (const file of AUDIO_FILES[cat]) {
+      audioBuffers[file] = await loadAudioToMemory(file);
+    }
+  }
+})();
 
 function playSfx(cat, pt, vol=1, rate=1){
-  if(!ac)return;
-  const arr=AUDIO_SAMPLES[cat];
+  if(!audioCtx)return;
+  const arr=AUDIO_FILES[cat];
   if(!arr||!arr.length)return;
   const file=arr[R()*arr.length|0];
   const buf=audioBuffers[file];
   if(!buf)return;
   
-  const src=ac.createBufferSource();src.buffer=buf;
+  const src=audioCtx.createBufferSource();src.buffer=buf;
   src.playbackRate.value=rate*(0.92+R()*.16);
-  const gain=ac.createGain();
-  const panner=ac.createPanner();
+  const gain=audioCtx.createGain();
+  const panner=audioCtx.createPanner();
   panner.panningModel='HRTF';panner.distanceModel='inverse';
   panner.refDistance=2;panner.maxDistance=60;panner.rolloffFactor=1.2;
   
@@ -367,24 +359,24 @@ function playSfx(cat, pt, vol=1, rate=1){
   const dist=pt?pt.distanceTo(cam.position):0;
   gain.gain.value=vol*Math.max(0,1-dist/60);
   
-  src.connect(gain).connect(panner).connect(master);
+  src.connect(gain).connect(panner).connect(audioCtx.destination);
   src.start();
 }
 
 function tone(f,f2,d,v,ty,dist){
-  if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain(),flt=ac.createBiquadFilter();
+  if(!audioCtx)return;const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain(),flt=audioCtx.createBiquadFilter();
   o.type=ty||'sine';o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f2,t+d);
   flt.type='lowpass';const far=dist?Math.min(1,dist/40):0;
   flt.frequency.value=Math.max(300,4000-far*3500);
   g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);
-  o.connect(flt).connect(g).connect(master);o.start(t);o.stop(t+d);
+  o.connect(flt).connect(g).connect(audioCtx.destination);o.start(t);o.stop(t+d);
 }
 
 function thump(v,d){
-  if(!ac)return;const t=ac.currentTime+d,o=ac.createOscillator(),g=ac.createGain();
+  if(!audioCtx)return;const t=audioCtx.currentTime+d,o=audioCtx.createOscillator(),g=audioCtx.createGain();
   o.type='sine';o.frequency.setValueAtTime(75,t);o.frequency.exponentialRampToValueAtTime(38,t+.13);
   g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);
-  o.connect(g).connect(master);o.start(t);o.stop(t+.17);
+  o.connect(g).connect(audioCtx.destination);o.start(t);o.stop(t+.17);
 }
 
 /* KREW / DEKALE */
@@ -455,7 +447,6 @@ function kill(n,dir){
   if(R()<.35&&!t){n.lv[2].tx=n.lv[3].tx=1.6}
   n.mt=.5+R();n.mc=2+(R()*3|0);
   
-  // DOKŁADNIE JEDEN dźwięk śmierci
   playSfx('pain', n.g.position.clone(), 1.2, 0.8);
   
   n.pool=new THREE.Mesh(decG,new THREE.MeshBasicMaterial({color:0x3a0204,transparent:true,opacity:.92,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3}));
@@ -466,7 +457,6 @@ function hitNPC(n,part,pt,dir,dmg){
   const head=part==='head';blood(pt,dir,head?2.2:1);
   n.hp=0;n.bleed=20;n.bp=n.hit.find(h=>h.userData.part===part);
   
-  // DOKŁADNIE JEDEN krzyk bólu
   playSfx('pain', n.g.position.clone(), 0.8, 1.1);
   
   if(n.hp<=0){
@@ -528,7 +518,7 @@ function updNPC(n,dt){
         if(n.aim>.8&&n.seen&&n.fire<=0){
           n.fire=.35+R()*.3;n.flash.visible=true;n.flashT=.06;
           playSfx('gun_pistol', n.g.position.clone(), 0.8, 1);
-          nz(.25,Math.min(.4,2/(dist+3)),undefined,dist);
+          tone(220,50,.2,Math.min(.5,3/(dist+4)),'sawtooth',dist);
           if(R()<n.acc*Math.max(.15,1-dist/40)*(crouchAmt>.5?.8:1.1))hurtPlayer(6+R()*8);
         }
       }
@@ -820,20 +810,30 @@ setupMenu();
 
 $('startBtn').onclick=()=>{
   $('mainMenu').classList.add('hidden');
-  initAudio();
   
-  audioLoader.load('music_menu_staging_drone.mp3', buffer=>{
-    menuMusicSource=ac.createBufferSource();
-    menuMusicSource.buffer=buffer;
-    menuMusicSource.loop=true;
-    const g=ac.createGain();
-    g.gain.value=0.4;
-    menuMusicSource.connect(g).connect(master);
-    menuMusicSource.start();
-    setTimeout(()=>{if(menuMusicSource)g.gain.setTargetAtTime(0,ac.currentTime,0.5)},2000);
-  });
-  
-  lock();
+  if(audioCtx.state === 'suspended') {
+      audioCtx.resume();
+  }
+
+  // Muzyka w tle
+  fetch('music_menu_staging_drone.mp3')
+    .then(res => res.arrayBuffer())
+    .then(buf => audioCtx.decodeAudioData(buf))
+    .then(decoded => {
+        const src = audioCtx.createBufferSource();
+        src.buffer = decoded;
+        src.loop = true;
+        const g = audioCtx.createGain();
+        g.gain.value = 0.4;
+        src.connect(g).connect(audioCtx.destination);
+        src.start();
+        setTimeout(()=>{if(src)g.gain.setTargetAtTime(0,audioCtx.currentTime,0.5)}, 2000);
+    }).catch(e=>console.warn("Błąd muzyki", e));
+
+  // Delay locka, by uniknąć czarnego ekranu (kursor blokuje się po wyrenderowaniu 1 klatki)
+  setTimeout(() => {
+    lock();
+  }, 100);
 };
 
 /* INPUT */
@@ -842,7 +842,7 @@ renderer.domElement.onclick=()=>{if(!locked&&!dead&&$('mainMenu').classList.cont
 document.addEventListener('pointerlockchange',()=>{
   locked=document.pointerLockElement===box;fb=false;
 });
-document.addEventListener('pointerlockerror',()=>{initAudio();fb=true;locked=true;log('BRAK POINTER LOCK: obrót strzałkami')});
+document.addEventListener('pointerlockerror',()=>{audioCtx.resume();fb=true;locked=true;log('BRAK POINTER LOCK: obrót strzałkami')});
 addEventListener('mousemove',e=>{if(!locked||fb)return;const s=.0019*sens*(adsOn?.58:1);yaw-=e.movementX*s;pitch=Math.max(-1.42,Math.min(1.42,pitch-e.movementY*s))});
 addEventListener('mousedown',e=>{if(!locked||dead)return;if(e.button===0){down=true;fire()}else if(e.button===2)adsOn=true});
 addEventListener('mouseup',e=>{if(e.button===0)down=false;if(e.button===2)adsOn=false});
