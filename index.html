@@ -34,7 +34,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #bat{color:#34d399;font-weight:bold}
 
 /* NOWE MENU GŁÓWNE */
-#mainMenu{position:absolute;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+#mainMenu{position:absolute;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;transition: opacity 0.5s ease;}
 #bgContainer{position:absolute;inset:0;background:#050505}
 #bgContainer img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 2s ease-in-out;filter:brightness(.6) contrast(1.2)}
 #bgContainer img.active{opacity:1}
@@ -42,7 +42,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #mainMenu p{position:relative;z-index:10;color:#a1a1aa;letter-spacing:4px;margin-bottom:50px;font-size:14px}
 #startBtn{position:relative;z-index:10;padding:20px 80px;background:#dc2626;color:#fff;font:bold 24px ui-monospace,monospace;letter-spacing:6px;border:2px solid #ef4444;border-radius:4px;cursor:pointer;box-shadow:0 0 30px rgba(220,38,38,0.6);transition:all .2s;text-transform:uppercase}
 #startBtn:hover{background:#ef4444;box-shadow:0 0 50px rgba(220,38,38,1);transform:scale(1.05)}
-#mainMenu.hidden{display:none !important;}
+#mainMenu.hidden{opacity:0; pointer-events:none;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 </style></head><body>
 <div id="box">
@@ -301,7 +301,7 @@ if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx),pz=hz-Math.abs(dz)
 const rc=new THREE.Raycaster();
 function los(a,b){const d=b.clone().sub(a),L=d.length();rc.set(a,d.normalize());rc.far=L;return rc.intersectObjects(obstM).length===0}
 
-/* AUDIO SYSTEM (NATYWNY) */
+/* AUDIO SYSTEM */
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 const AUDIO_FILES={
   pain:[
@@ -315,7 +315,7 @@ const AUDIO_FILES={
 };
 const audioBuffers = {};
 
-// Ładujemy pliki do pamięci
+// Ładujemy pliki
 for(const cat in AUDIO_FILES){
   AUDIO_FILES[cat].forEach(file=>{
     fetch(file)
@@ -772,7 +772,7 @@ function respawn(){
   dead=false;hp=100;P.set(0,1.6,20);yaw=pitch=0;$('hpf').style.width='100%';
   $('dead').classList.remove('on');U.blood.value=0;
   for(const n of npcs)if(!n.dead){n.g.position.set((R()-.5)*20,0,-15-R()*6);n.state='patrol';n.seen=false;n.lost=0}
-  if(!locked&&!fb)lock();
+  if(!locked&&!fb)box.requestPointerLock&&box.requestPointerLock();
 }
 
 /* MENU GŁÓWNE */
@@ -798,13 +798,13 @@ function setupMenu(){
 setupMenu();
 
 $('startBtn').onclick=()=>{
-  $('mainMenu').classList.add('hidden'); // Ukrywa menu (display: none)
+  $('mainMenu').classList.add('hidden'); // Ukrywa menu, ale go nie usuwa (silnik renderuje pod nim)
   
   if(audioCtx.state === 'suspended') {
       audioCtx.resume();
   }
 
-  // Muzyka w tle (bez asynchronicznych opóźnień)
+  // Muzyka w tle
   fetch('music_menu_staging_drone.mp3')
     .then(res => res.arrayBuffer())
     .then(buf => audioCtx.decodeAudioData(buf))
@@ -819,7 +819,7 @@ $('startBtn').onclick=()=>{
         setTimeout(()=>{if(src)g.gain.setTargetAtTime(0,audioCtx.currentTime,0.5)}, 2500);
     }).catch(e=>console.warn("Błąd muzyki:", e));
 
-  // Kursor blokujemy z opóźnieniem, dając przeglądarce czas na wyrenderowanie 1 klatki
+  // Kursor blokujemy z opóźnieniem, by dać silnikowi klatkę czasu na render
   setTimeout(() => {
     box.requestPointerLock && box.requestPointerLock();
   }, 100);
