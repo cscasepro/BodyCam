@@ -33,7 +33,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 .row{display:flex;justify-content:space-between;align-items:center;margin:0 0 12px}
 #bat{color:#34d399;font-weight:bold}
 
-/* MENU GŁÓWNE */
+/* NOWE MENU GŁÓWNE */
 #mainMenu{position:absolute;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
 #bgContainer{position:absolute;inset:0;background:#050505}
 #bgContainer img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 2s ease-in-out;filter:brightness(.6) contrast(1.2)}
@@ -301,7 +301,7 @@ if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx),pz=hz-Math.abs(dz)
 const rc=new THREE.Raycaster();
 function los(a,b){const d=b.clone().sub(a),L=d.length();rc.set(a,d.normalize());rc.far=L;return rc.intersectObjects(obstM).length===0}
 
-/* AUDIO SYSTEM */
+/* AUDIO SYSTEM - ŁADOWANIE NATYCHMIASTOWE */
 let ac,master,menuMusicSource;
 const audioLoader=new THREE.AudioLoader();
 const AUDIO_SAMPLES={ pain:[], gun_pistol:[], gun_rifle:[] };
@@ -317,15 +317,14 @@ const AUDIO_FILES={
   gun_rifle:['sovetsky_rastov72-ak74-sound-effect-351437.mp3']
 };
 
-function loadAudios(){
-  for(const cat in AUDIO_FILES){
-    AUDIO_FILES[cat].forEach(file=>{
-      audioLoader.load(file,buffer=>{
-        audioBuffers[file]=buffer;
-        AUDIO_SAMPLES[cat].push(file);
-      },undefined,err=>console.warn('Błąd audio (może plik nie istnieje):',file));
-    });
-  }
+// Ładujemy pliki od razu po załadowaniu strony
+for(const cat in AUDIO_FILES){
+  AUDIO_FILES[cat].forEach(file=>{
+    audioLoader.load(file,buffer=>{
+      audioBuffers[file]=buffer;
+      AUDIO_SAMPLES[cat].push(file);
+    },undefined,err=>console.warn('Błąd audio:',file));
+  });
 }
 
 function initAudio(){
@@ -348,7 +347,7 @@ function playSfx(cat, pt, vol=1, rate=1){
   if(!ac)return;
   const arr=AUDIO_SAMPLES[cat];
   if(!arr||!arr.length)return;
-  const file=arr[R()*arr.length|0]; // LOSOWANIE
+  const file=arr[R()*arr.length|0];
   const buf=audioBuffers[file];
   if(!buf)return;
   
@@ -456,7 +455,7 @@ function kill(n,dir){
   if(R()<.35&&!t){n.lv[2].tx=n.lv[3].tx=1.6}
   n.mt=.5+R();n.mc=2+(R()*3|0);
   
-  // TYLKO JEDEN dźwięk śmierci
+  // DOKŁADNIE JEDEN dźwięk śmierci
   playSfx('pain', n.g.position.clone(), 1.2, 0.8);
   
   n.pool=new THREE.Mesh(decG,new THREE.MeshBasicMaterial({color:0x3a0204,transparent:true,opacity:.92,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3}));
@@ -467,7 +466,7 @@ function hitNPC(n,part,pt,dir,dmg){
   const head=part==='head';blood(pt,dir,head?2.2:1);
   n.hp=0;n.bleed=20;n.bp=n.hit.find(h=>h.userData.part===part);
   
-  // TYLKO JEDEN krzyk bólu przy trafieniu
+  // DOKŁADNIE JEDEN krzyk bólu
   playSfx('pain', n.g.position.clone(), 0.8, 1.1);
   
   if(n.hp<=0){
@@ -492,7 +491,6 @@ function updNPC(n,dt){
       if(n.fall>.95){const rest=i<2?-.9:0;p.rotation.x+=(rest-p.rotation.x)*dt*2;}
     });
     n.flash.visible=false;
-    // Usunięto odtwarzanie bólu z tła dla martwych (zbyt nachalne)
     if(n.fall>.6&&n.pr<1){n.pr=Math.min(1,n.pr+dt*.08);n.pool.visible=true;n.hit[0].getWorldPosition(tmp);n.pool.position.set(tmp.x,.03,tmp.z);n.pool.scale.setScalar(.12+.8*n.pr)}
     if(n.bleed>0){n.bleed-=dt;n.dc=(n.dc||0)-dt;if(n.dc<=0){n.dc=.15;n.head.getWorldPosition(tmp);drip(tmp)}}
     return;
@@ -744,7 +742,6 @@ function log(t){const e=$('log');e.textContent='[OSD] '+t;e.style.opacity=1;clea
 function hurtPlayer(a){
   if(dead||hurtCd>0)return;hurtCd=.1;hp-=a;shake=.04;U.hurt.value=1;
   tone(80,40,.25,.4,'sawtooth');
-  // Usunięto groan() tutaj by nie nakładać na siebie krzyków zbyt często
   stress=1;bloodV=Math.min(1,bloodV+.45+a*.03);
   $('hpf').style.width=Math.max(0,hp)+'%';
   if(hp<=0){dead=true;$('dead').classList.add('on');$('menu').classList.remove('on');if(document.pointerLockElement)document.exitPointerLock()}
@@ -824,7 +821,6 @@ setupMenu();
 $('startBtn').onclick=()=>{
   $('mainMenu').classList.add('hidden');
   initAudio();
-  loadAudios();
   
   audioLoader.load('music_menu_staging_drone.mp3', buffer=>{
     menuMusicSource=ac.createBufferSource();
