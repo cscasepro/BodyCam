@@ -42,7 +42,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #mainMenu p{position:relative;z-index:10;color:#a1a1aa;letter-spacing:4px;margin-bottom:50px;font-size:14px}
 #startBtn{position:relative;z-index:10;padding:20px 80px;background:#dc2626;color:#fff;font:bold 24px ui-monospace,monospace;letter-spacing:6px;border:2px solid #ef4444;border-radius:4px;cursor:pointer;box-shadow:0 0 30px rgba(220,38,38,0.6);transition:all .2s;text-transform:uppercase}
 #startBtn:hover{background:#ef4444;box-shadow:0 0 50px rgba(220,38,38,1);transform:scale(1.05)}
-#mainMenu.hidden{display:none}
+#mainMenu.hidden{display:none !important;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 </style></head><body>
 <div id="box">
@@ -315,25 +315,16 @@ const AUDIO_FILES={
 };
 const audioBuffers = {};
 
-// Funkcja ładująca plik do pamięci, by nie było opóźnienia
-async function loadAudioToMemory(url) {
-  try {
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-    return await audioCtx.decodeAudioData(arrayBuffer);
-  } catch(e) {
-    console.warn("Nie można załadować audio:", url, e);
-  }
+// Ładujemy pliki do pamięci
+for(const cat in AUDIO_FILES){
+  AUDIO_FILES[cat].forEach(file=>{
+    fetch(file)
+      .then(res=>res.arrayBuffer())
+      .then(buf=>audioCtx.decodeAudioData(buf))
+      .then(decoded=>{ audioBuffers[file]=decoded; })
+      .catch(e=>console.warn('Błąd audio:', file));
+  });
 }
-
-// Ładujemy wszystko w tle od razu na starcie
-(async () => {
-  for (const cat in AUDIO_FILES) {
-    for (const file of AUDIO_FILES[cat]) {
-      audioBuffers[file] = await loadAudioToMemory(file);
-    }
-  }
-})();
 
 function playSfx(cat, pt, vol=1, rate=1){
   if(!audioCtx)return;
@@ -697,8 +688,6 @@ function fire(){
   else if(slot===2) playSfx('gun_rifle', cam.position.clone(), 1.2, 1); 
   else tone(slot===3?95:slot===2?140:180,30,.3,.8,'triangle'); 
   
-  nz(.4,.6);
-  
   const rayTargets = allHit.concat(obstM);
   
   for(let p=0;p<w.pel;p++){
@@ -809,13 +798,13 @@ function setupMenu(){
 setupMenu();
 
 $('startBtn').onclick=()=>{
-  $('mainMenu').classList.add('hidden');
+  $('mainMenu').classList.add('hidden'); // Ukrywa menu (display: none)
   
   if(audioCtx.state === 'suspended') {
       audioCtx.resume();
   }
 
-  // Muzyka w tle
+  // Muzyka w tle (bez asynchronicznych opóźnień)
   fetch('music_menu_staging_drone.mp3')
     .then(res => res.arrayBuffer())
     .then(buf => audioCtx.decodeAudioData(buf))
@@ -827,18 +816,17 @@ $('startBtn').onclick=()=>{
         g.gain.value = 0.4;
         src.connect(g).connect(audioCtx.destination);
         src.start();
-        setTimeout(()=>{if(src)g.gain.setTargetAtTime(0,audioCtx.currentTime,0.5)}, 2000);
-    }).catch(e=>console.warn("Błąd muzyki", e));
+        setTimeout(()=>{if(src)g.gain.setTargetAtTime(0,audioCtx.currentTime,0.5)}, 2500);
+    }).catch(e=>console.warn("Błąd muzyki:", e));
 
-  // Delay locka, by uniknąć czarnego ekranu (kursor blokuje się po wyrenderowaniu 1 klatki)
+  // Kursor blokujemy z opóźnieniem, dając przeglądarce czas na wyrenderowanie 1 klatki
   setTimeout(() => {
-    lock();
+    box.requestPointerLock && box.requestPointerLock();
   }, 100);
 };
 
 /* INPUT */
-const lock=()=>{box.requestPointerLock&&box.requestPointerLock()};
-renderer.domElement.onclick=()=>{if(!locked&&!dead&&$('mainMenu').classList.contains('hidden'))lock()};
+renderer.domElement.onclick=()=>{if(!locked&&!dead&&$('mainMenu').classList.contains('hidden')){box.requestPointerLock&&box.requestPointerLock();}};
 document.addEventListener('pointerlockchange',()=>{
   locked=document.pointerLockElement===box;fb=false;
 });
