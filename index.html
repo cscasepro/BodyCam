@@ -29,14 +29,34 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 .sb{min-width:250px;padding:9px 14px;background:rgba(60,60,70,.7);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:4px;font:inherit;letter-spacing:2px}
 #dead,#modal{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:40;text-align:center}
 #dead{background:rgba(40,0,0,.92)}#dead.on{display:flex}#dead h2{color:#dc2626;letter-spacing:6px;font-size:26px;margin:0 0 10px}
-#modal{display:flex;background:rgba(8,10,14,.75);backdrop-filter:blur(6px);z-index:30}#modal.off{display:none}
 .card{background:rgba(20,20,24,.96);border:1px solid #3f3f46;border-radius:12px;padding:22px;max-width:420px;width:92%;text-align:left}
 .card h1{font-size:14px;letter-spacing:3px;margin:0 0 10px}.card p{font:12px/1.5 system-ui,sans-serif;color:#d4d4d8;margin:0 0 12px}
 .go{width:100%;padding:12px;background:#059669;color:#fff;border:0;border-radius:8px;font:bold 12px ui-monospace,monospace;letter-spacing:2px;cursor:pointer}
 .row{display:flex;justify-content:space-between;align-items:center;margin:0 0 12px}
 #bat{color:#34d399;font-weight:bold}
+
+/* NOWE MENU GŁÓWNE */
+#mainMenu{position:absolute;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+#bgContainer{position:absolute;inset:0;background:#050505}
+#bgContainer img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 2s ease-in-out;filter:brightness(.6) contrast(1.2)}
+#bgContainer img.active{opacity:1}
+#mainMenu h1{position:relative;z-index:10;font-size:48px;color:#fff;letter-spacing:12px;margin:0 0 10px;text-shadow:0 0 20px rgba(255,0,0,0.8);animation:pulse 2s infinite}
+#mainMenu p{position:relative;z-index:10;color:#a1a1aa;letter-spacing:4px;margin-bottom:50px;font-size:14px}
+#startBtn{position:relative;z-index:10;padding:20px 80px;background:#dc2626;color:#fff;font:bold 24px ui-monospace,monospace;letter-spacing:6px;border:2px solid #ef4444;border-radius:4px;cursor:pointer;box-shadow:0 0 30px rgba(220,38,38,0.6);transition:all .2s;text-transform:uppercase}
+#startBtn:hover{background:#ef4444;box-shadow:0 0 50px rgba(220,38,38,1);transform:scale(1.05)}
+#mainMenu.hidden{display:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 </style></head><body>
 <div id="box">
+<div id="mainMenu">
+  <div id="bgContainer">
+    <!-- Obrazki ładowane przez JS -->
+  </div>
+  <h1>BODYCAM</h1>
+  <p>AXON BODY 4 // TACTICAL SIMULATOR</p>
+  <button id="startBtn">START</button>
+</div>
+
 <div id="scan" class="o"></div><div id="ret" class="o"></div><div id="hm" class="o"></div><div id="vig" class="o"></div>
 <div id="hp" class="o"><div id="hpf"></div></div>
 <div id="tl" class="o"><div class="p"><span class="dot"></span><b>REC</b> | <span id="tc">00:00:00:00</span></div><div style="padding:3px 4px;color:#d1d5db;font-size:11px">AXON BODY 4 // UNIT 07-DELTA // WIDE 100°</div></div>
@@ -50,10 +70,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 <button class="sb" data-a="2" style="border-left:3px solid #f59e0b">[2] NA KOLANA</button>
 <button class="sb" data-a="3" style="border-left:3px solid #dc2626">[3] ZASTRZEL</button></div>
 <div id="dead"><h2>OFFICER DOWN</h2><p style="color:var(--dim)">BODYCAM FEED TERMINATED</p><button id="rs" class="go" style="width:auto;padding:12px 32px;background:#dc2626">RESPAWN</button></div>
-<div id="modal"><div class="card"><h1>● BODYCAM SANDBOX // READY</h1>
-<p>Uzbrojeni wrogowie patrolują arenę. Wyceluj w kogoś z bliska (poniżej 6,5 m) przez ok. 1,2 s, a podda się. Twarze są cenzurowane mozaiką.</p>
+<div id="modal" class="off"><div class="card"><h1>● BODYCAM SANDBOX // PAUZA</h1>
 <div class="row"><span>Czułość myszy</span><input id="sens" type="range" min=".3" max="2.5" step=".1" value="1"></div>
-<button id="go" class="go">KLIKNIJ, ABY WŁĄCZYĆ KAMERĘ</button></div></div>
+<button id="go" class="go">WZNÓW GRĘ</button></div></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -289,7 +308,7 @@ const rc=new THREE.Raycaster();
 function los(a,b){const d=b.clone().sub(a),L=d.length();rc.set(a,d.normalize());rc.far=L;return rc.intersectObjects(obstM).length===0}
 
 /* AUDIO SYSTEM */
-let ac,master;
+let ac,master,menuMusic;
 const audioLoader=new THREE.AudioLoader();
 const AUDIO_SAMPLES={ pain:[], gun_pistol:[], gun_rifle:[] };
 const audioBuffers={};
@@ -323,7 +342,6 @@ function initAudio(){
   master.attack.value=.003;master.release.value=.12;
   master.connect(ac.destination);
   
-  // Cichy szum tła
   const n=ac.sampleRate*4|0,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
   for(let i=0;i<n;i++)d[i]=(R()-.5)*.5;
   const src=ac.createBufferSource();src.buffer=b;src.loop=true;
@@ -367,17 +385,6 @@ function tone(f,f2,d,v,ty,dist){
   flt.frequency.value=Math.max(300,4000-far*3500);
   g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);
   o.connect(flt).connect(g).connect(master);o.start(t);o.stop(t+d);
-}
-
-function nz(d,v,fc,dist){
-  if(!ac)return;const n=ac.sampleRate*d|0,b=ac.createBuffer(1,n,ac.sampleRate),a=b.getChannelData(0);
-  for(let i=0;i<n;i++)a[i]=R()*2-1;
-  const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain(),t=ac.currentTime;
-  s.buffer=b;f.type='lowpass';const far=dist?Math.min(1,dist/40):0;
-  f.frequency.setValueAtTime(Math.max(200,(fc||1500)-far*1200),t);
-  f.frequency.exponentialRampToValueAtTime(150,t+d);
-  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);
-  s.connect(f).connect(g).connect(master);s.start(t);
 }
 
 function groan(p,f,len){
@@ -709,15 +716,25 @@ function fire(){
   
   nz(.4,.6);
   
+  // RAYCASTING FIX — używamy allHit (NPC) + obstM (świat)
+  const rayTargets = allHit.concat(obstM);
+  
   for(let p=0;p<w.pel;p++){
     const s=w.sp*(1-ads*.72),d=V((R()-.5)*s,(R()-.5)*s,-1).normalize().applyQuaternion(cam.quaternion);
     rc.set(cam.position,d);rc.far=100;
-    const hn=rc.intersectObjects(allHit)[0],ho=rc.intersectObjects(obstM)[0];
-    if(hn&&(!ho||hn.distance<ho.distance)){
-      const u=hn.object.userData,m=hitNPC(u.npc,u.part,hn.point,d,w.dmg);tone(110,35,.15,.5);
-      $('hm').style.opacity=1;clearTimeout(fire.t);fire.t=setTimeout(()=>$('hm').style.opacity=0,95);
-      log('WRÓG #'+u.npc.i+': '+m);
-    } else if(ho)hole(ho.point,ho.face.normal.clone());
+    const hits = rc.intersectObjects(rayTargets);
+    if(hits.length>0){
+      const hit = hits[0]; // bierzemy pierwszy trafiony obiekt
+      if(hit.object.userData && hit.object.userData.npc){
+        const u=hit.object.userData;
+        const m=hitNPC(u.npc,u.part,hit.point,d,w.dmg);
+        tone(110,35,.15,.5);
+        $('hm').style.opacity=1;clearTimeout(fire.t);fire.t=setTimeout(()=>$('hm').style.opacity=0,95);
+        log('WRÓG #'+u.npc.i+': '+m);
+      } else {
+        hole(hit.point,hit.face.normal.clone()); // trafiono ścianę
+      }
+    }
   }
   for(const n of npcs){
     if(n.dead||n.state==='surrender'||n.state==='kneel')continue;
@@ -787,14 +804,56 @@ function respawn(){
   for(const n of npcs)if(!n.dead){n.g.position.set((R()-.5)*20,0,-15-R()*6);n.state='patrol';n.seen=false;n.lost=0}
 }
 
+/* NOWE MENU GŁÓWNE — logika */
+const bgImages=['capsule_616x353.jpg','movie_232x130.jpg','obraz_2026-11-15_002750835.png'];
+let bgIndex=0;
+function setupMenu(){
+  const container=$('bgContainer');
+  bgImages.forEach((src,i)=>{
+    const img=document.createElement('img');
+    img.src=src;
+    if(i===0)img.classList.add('active');
+    container.appendChild(img);
+  });
+  
+  setInterval(()=>{
+    const imgs=container.querySelectorAll('img');
+    imgs.forEach(img=>img.classList.remove('active'));
+    bgIndex=(bgIndex+1)%imgs.length;
+    imgs[bgIndex].classList.add('active');
+  },5000); // Zmiana co 5 sekund
+}
+setupMenu();
+
+$('startBtn').onclick=()=>{
+  $('mainMenu').classList.add('hidden');
+  initAudio();
+  loadAudios();
+  
+  // Muzyka w tle
+  audioLoader.load('music_menu_staging_drone.mp3', buffer=>{
+    menuMusic=ac.createBufferSource();
+    menuMusic.buffer=buffer;
+    menuMusic.loop=true;
+    const g=ac.createGain();
+    g.gain.value=0.4;
+    menuMusic.connect(g).connect(master);
+    menuMusic.start();
+    // Stop muzyki po 3 sekundach (gdy kamera się włącza)
+    setTimeout(()=>{if(menuMusic)g.gain.setTargetAtTime(0,ac.currentTime,0.5)},3000);
+  });
+  
+  lock();
+};
+
 /* INPUT */
-const lock=()=>{initAudio();box.requestPointerLock&&box.requestPointerLock()};
-$('go').onclick=()=>{initAudio();loadAudios();lock();};
-renderer.domElement.onclick=()=>{if(!locked&&!dead)lock()};
+const lock=()=>{box.requestPointerLock&&box.requestPointerLock()};
+$('go').onclick=lock;
+renderer.domElement.onclick=()=>{if(!locked&&!dead&&$('mainMenu').classList.contains('hidden'))lock()};
 document.addEventListener('pointerlockchange',()=>{
   locked=document.pointerLockElement===box;fb=false;
   if(locked)$('modal').classList.add('off');
-  else if(!dead){$('modal').classList.remove('off');down=false;adsOn=false}
+  else if(!dead&&$('mainMenu').classList.contains('hidden')){$('modal').classList.remove('off');down=false;adsOn=false}
 });
 document.addEventListener('pointerlockerror',()=>{initAudio();fb=true;locked=true;$('modal').classList.add('off');log('BRAK POINTER LOCK: obrót strzałkami')});
 addEventListener('mousemove',e=>{if(!locked||fb)return;const s=.0019*sens*(adsOn?.58:1);yaw-=e.movementX*s;pitch=Math.max(-1.42,Math.min(1.42,pitch-e.movementY*s))});
