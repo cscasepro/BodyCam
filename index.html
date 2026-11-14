@@ -288,9 +288,7 @@ if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx),pz=hz-Math.abs(dz)
 const rc=new THREE.Raycaster();
 function los(a,b){const d=b.clone().sub(a),L=d.length();rc.set(a,d.normalize());rc.far=L;return rc.intersectObjects(obstM).length===0}
 
-/* ============================================================
-   AUDIO SYSTEM — z plikami dźwiękowymi
-   ============================================================ */
+/* AUDIO SYSTEM */
 let ac,master;
 const audioLoader=new THREE.AudioLoader();
 const AUDIO_SAMPLES={ pain:[], gun_pistol:[], gun_rifle:[] };
@@ -312,10 +310,6 @@ function loadAudios(){
       audioLoader.load(file,buffer=>{
         audioBuffers[file]=buffer;
         AUDIO_SAMPLES[cat].push(file);
-        // ciche "rozgrzanie" audio po pierwszym kliknięciu
-        if(ac&&ac.state==='running'){
-           const src=ac.createBufferSource();src.buffer=buffer;src.connect(ac.createGain());src.start(0);src.stop(0);
-        }
       },undefined,err=>console.warn('Błąd audio (może plik nie istnieje):',file));
     });
   }
@@ -329,6 +323,7 @@ function initAudio(){
   master.attack.value=.003;master.release.value=.12;
   master.connect(ac.destination);
   
+  // Cichy szum tła
   const n=ac.sampleRate*4|0,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
   for(let i=0;i<n;i++)d[i]=(R()-.5)*.5;
   const src=ac.createBufferSource();src.buffer=b;src.loop=true;
@@ -346,7 +341,7 @@ function playSfx(cat, pt, vol=1, rate=1){
   if(!buf)return;
   
   const src=ac.createBufferSource();src.buffer=buf;
-  src.playbackRate.value=rate*(0.92+R()*.16); // randomizacja tonu
+  src.playbackRate.value=rate*(0.92+R()*.16);
   const gain=ac.createGain();
   const panner=ac.createPanner();
   panner.panningModel='HRTF';panner.distanceModel='inverse';
@@ -374,10 +369,19 @@ function tone(f,f2,d,v,ty,dist){
   o.connect(flt).connect(g).connect(master);o.start(t);o.stop(t+d);
 }
 
-// stary groan() zostawiony dla NPC, ale playSfx go przykryje
+function nz(d,v,fc,dist){
+  if(!ac)return;const n=ac.sampleRate*d|0,b=ac.createBuffer(1,n,ac.sampleRate),a=b.getChannelData(0);
+  for(let i=0;i<n;i++)a[i]=R()*2-1;
+  const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain(),t=ac.currentTime;
+  s.buffer=b;f.type='lowpass';const far=dist?Math.min(1,dist/40):0;
+  f.frequency.setValueAtTime(Math.max(200,(fc||1500)-far*1200),t);
+  f.frequency.exponentialRampToValueAtTime(150,t+d);
+  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);
+  s.connect(f).connect(g).connect(master);s.start(t);
+}
+
 function groan(p,f,len){
-  if(!ac)return;const d=P.distanceTo(p),v=Math.min(.45,5/(d+3));if(v<.03)return;
-  // Dźwięk z pliku zamiast syntezatora
+  if(!ac)return;
   playSfx('pain', p.clone(), 0.8);
 }
 
@@ -388,9 +392,7 @@ function thump(v,d){
   o.connect(g).connect(master);o.start(t);o.stop(t+.17);
 }
 
-/* ============================================================
-   KREW / DEKALE
-   ============================================================ */
+/* KREW / DEKALE */
 const dropG=new THREE.SphereGeometry(.02,6,6),dropM=new THREE.MeshStandardMaterial({color:0x8a0a10,roughness:.25}),
 decG=new THREE.CircleGeometry(1,14),holeG=new THREE.CircleGeometry(.02,8),holeM=new THREE.MeshBasicMaterial({color:0x111111}),
 parts=[],decals=[],holes=[];
@@ -405,9 +407,7 @@ function hole(pt,n){if(holes.length>70)scene.remove(holes.shift());const m=new T
 function updParts(dt){for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.life-=dt;p.v.y-=9.81*dt;p.m.position.addScaledVector(p.v,dt);
 if(p.m.position.y<=.02){decal(p.m.position.x,p.m.position.z,p.r);p.life=0}if(p.life<=0){scene.remove(p.m);parts.splice(i,1)}}}
 
-/* ============================================================
-   NPC
-   ============================================================ */
+/* NPC */
 const skins=[0xd8a684,0xc68e6b,0x8d5b3e,0xe2b799,0xa87150];
 const mosaic=(()=>{const N=6,c=document.createElement('canvas');c.width=c.height=N;const x=c.getContext('2d');
 for(let j=0;j<N;j++)for(let i=0;i<N;i++){const v=70+R()*130;x.fillStyle='rgb('+(v+25|0)+','+(v+5|0)+','+(v-10|0)+')';x.fillRect(i,j,1,1)}
@@ -459,10 +459,7 @@ function kill(n,dir){
   n.lv=['armL','armR','legL','legR'].map(()=>({vx:(R()-.5)*16,vz:(R()-.5)*9,tx:(R()-.5)*2,tz:(R()<.5?-1:1)*(.3+R()*.9)}));
   if(R()<.35&&!t){n.lv[2].tx=n.lv[3].tx=1.6}
   n.mt=.5+R();n.mc=2+(R()*3|0);
-  
-  // Odgłos śmierci z pliku
   playSfx('pain', n.g.position.clone(), 1.2, 0.9);
-  
   n.pool=new THREE.Mesh(decG,new THREE.MeshBasicMaterial({color:0x3a0204,transparent:true,opacity:.92,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3}));
   n.pool.rotation.x=-Math.PI/2;n.pool.scale.setScalar(.01);n.pool.visible=false;scene.add(n.pool);n.pr=0;
 }
@@ -470,10 +467,7 @@ function hitNPC(n,part,pt,dir,dmg){
   if(n.dead){blood(pt,dir,.4);return 'TRAFIENIE W ZWŁOKI'}
   const head=part==='head';blood(pt,dir,head?2.2:1);
   n.hp=0;n.bleed=20;n.bp=n.hit.find(h=>h.userData.part===part);
-  
-  // Krzyk bólu przy trafieniu
   playSfx('pain', n.g.position.clone(), 0.8, 1.1);
-  
   if(n.hp<=0){
     kill(n,dir);
     if(head&&cam.position.distanceTo(pt)<6)U.blood.value=Math.min(1,U.blood.value+.55);
@@ -533,7 +527,6 @@ function updNPC(n,dt){
         n.aim+=dt;n.fire-=dt;
         if(n.aim>.8&&n.seen&&n.fire<=0){
           n.fire=.35+R()*.3;n.flash.visible=true;n.flashT=.06;
-          // NPC też strzela z pliku (przestrzennie)
           playSfx('gun_pistol', n.g.position.clone(), 0.8, 1);
           nz(.25,Math.min(.4,2/(dist+3)),undefined,dist);
           if(R()<n.acc*Math.max(.15,1-dist/40)*(crouchAmt>.5?.8:1.1))hurtPlayer(6+R()*8);
@@ -555,9 +548,7 @@ function updNPC(n,dt){
   n.gun.visible=n.armed;
 }
 
-/* ============================================================
-   GRACZ / VIEWMODEL
-   ============================================================ */
+/* GRACZ / VIEWMODEL */
 const P=V(0,1.6,20),K={};
 let yaw=0,pitch=0,hp=100,dead=false,locked=false,down=false,ads=0,adsOn=false,crouchAmt=0,bob=0,roll=0,sens=1,hurtCd=0,recoil=0,slot=1,cd=0,reloading=0,flashT=0,shake=0,menuN=null,fb=false;
 let flashOn=false,battery=94,batT=0;
@@ -712,10 +703,9 @@ function fire(){
   w.ammo--;cd=w.rate;recoil+=w.kick;pitch+=w.kick*.45;yaw+=(R()-.5)*.014;shake=.016;U.flash.value=.5;
   mzl.position.set(0,.02,w.mz);mzl.intensity=6;flashT=.045;
   
-  // Dźwięk z pliku w zależności od broni
-  if(slot===1) playSfx('gun_pistol', cam.position.clone(), 1.5, 1); // Pistolet (M1911)
-  else if(slot===2) playSfx('gun_rifle', cam.position.clone(), 1.2, 1); // Karabin (AK-74)
-  else tone(slot===3?95:slot===2?140:180,30,.3,.8,'triangle'); // Strzelba - dalej syntezator
+  if(slot===1) playSfx('gun_pistol', cam.position.clone(), 1.5, 1); 
+  else if(slot===2) playSfx('gun_rifle', cam.position.clone(), 1.2, 1); 
+  else tone(slot===3?95:slot===2?140:180,30,.3,.8,'triangle'); 
   
   nz(.4,.6);
   
