@@ -1,0 +1,20 @@
+/* MENU GŁÓWNE */
+#mainMenu{position:absolute;inset:0;z-index:100;background:#000;overflow:hidden}
+#mainMenu.hidden{display:none}
+#bgContainer{position:absolute;inset:0;background:#050505}
+#bgContainer img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 2s ease-in-out;filter:brightness(.6) contrast(1.2)}
+#bgContainer img.active{opacity:1}
+#mmShade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.85),rgba(0,0,0,.2) 55%,rgba(0,0,0,.6))}
+#mmLeft{position:absolute;left:6vw;top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;gap:12px;width:min(340px,80vw)}
+.mmT{font-size:44px;letter-spacing:10px;color:#fff;text-shadow:0 0 20px rgba(255,0,0,.8)}
+.mmS{color:#a1a1aa;letter-spacing:4px;font-size:12px;margin-bottom:18px}
+.mm-btn{padding:14px 18px;text-align:left;background:rgba(20,20,24,.75);color:#fff;border:1px solid rgba(255,255,255,.2);border-left:4px solid #dc2626;font:bold 15px ui-monospace,monospace;letter-spacing:4px;cursor:pointer;transition:.15s}
+.mm-btn:hover{background:#dc2626;transform:translateX(8px)}
+#mmPts{color:var(--amb);font-size:11px;letter-spacing:2px;margin-top:8px}
+#mmChar{position:absolute;right:4vw;bottom:0;height:88vh;z-index:5;filter:drop-shadow(0 0 30px #000)}
+.mmPanel{position:absolute;left:calc(6vw + 380px);top:50%;transform:translateY(-50%);z-index:12;display:none;background:rgba(10,10,15,.93);border:1px solid #3f3f46;border-radius:10px;padding:18px;width:min(420px,50vw)}
+.mmPanel.on{display:block}.mmPanel h3{margin:0 0 12px;letter-spacing:3px;color:var(--amb)}
+.mmPanel input[type=text]{width:100%;margin:0 0 10px;padding:9px;background:#18181b;color:#fff;border:1px solid #3f3f46;border-radius:4px;font:inherit;user-select:text;-webkit-user-select:text}
+#mpMsg{margin-top:10px;color:#fca5a5}
+.wc{display:flex;align-items:center;gap:12px;margin:0 0 12px}.wc svg{width:120px;height:42px;flex:none}.wc b{display:block;font-size:11px;margin-bottom:5px}
+.sw{width:26px;height:26px;border:2px solid #555;border-radius:50%;color:#fff;font:9px ui-monospace,monospace;cursor:pointer;margin-right:4px}.sw.on{border-color:#fff}
