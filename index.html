@@ -620,19 +620,27 @@ function updNPC(n,dt){
     n.fall=Math.min(1,n.fall+dt*n.fs);const e=1-Math.pow(1-n.fall,3);
     g.rotation.x=n.tx*e;g.rotation.z=n.tz*e;g.rotation.y+=n.spin*dt*(1-n.fall);
     g.position.y=(n.tz?.22:.16)*e;
-    n.vel.multiplyScalar(Math.max(0,1-dt*4));
-    g.position.addScaledVector(n.vel,dt);
     
-    // POPRAWKA: Fizyka trupa - zatrzymanie/odbicie od ściany
-    for(const o of obst){
-      const dx=g.position.x-o.x,dz=g.position.z-o.z;
-      const hx=o.w/2+0.4,hz=o.d/2+0.4;
-      if(Math.abs(dx)<hx&&Math.abs(dz)<hz){
-        const px=hx-Math.abs(dx),pz=hz-Math.abs(dz);
-        if(px<pz){g.position.x+=(dx<0?-1:1)*px;n.vel.x*=-0.4} // Odbicie od ściany X
-        else{g.position.z+=(dz<0?-1:1)*pz;n.vel.z*=-0.4} // Odbicie od ściany Z
+    // POPRAWIONA FIZYKA TRUPA - RAYCASTING ZAPOBIEGA PRZENIKANIU
+    const velLen = n.vel.length();
+    if (velLen > 0.01) {
+      const rayDir = n.vel.clone().normalize();
+      const rayLength = velLen * dt + 0.5; // sprawdźmy kawałek do przodu
+      const newRay = new THREE.Raycaster(g.position.clone().setY(0.2), rayDir, 0, rayLength);
+      const wallHits = newRay.intersectObjects(obstM);
+      
+      if (wallHits.length > 0) {
+        // Uderzył w ścianę - zatrzymaj go na powierzchni i odbij lekko
+        const hit = wallHits[0];
+        g.position.copy(hit.point).addScaledVector(hit.face.normal, -0.4); // cofnij do ściany
+        g.position.y = (n.tz?.22:.16)*e; // przywróć Y
+        n.vel.reflect(hit.face.normal.clone().transformDirection(hit.object.matrixWorld));
+        n.vel.multiplyScalar(0.3); // wytłumienie
+      } else {
+        g.position.addScaledVector(n.vel, dt);
       }
     }
+    n.vel.multiplyScalar(Math.max(0,1-dt*4));
     
     ['armL','armR','legL','legR'].forEach((k,i)=>{const s=n.lv[i],p=n[k];
       s.vx+=((s.tx-p.rotation.x)*40-s.vx*5)*dt;s.vz+=((s.tz-p.rotation.z)*40-s.vz*5)*dt;
