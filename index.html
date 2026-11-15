@@ -298,14 +298,12 @@ addBox(0,-13,8,1.2,2,concreteMat);addBox(0,12,8,1.2,2,concreteMat);
 addBox(-14,0,2,1.2,8,concreteMat);addBox(14,0,2,1.2,8,concreteMat);
 addBox(0,-2,5,2,1.2,concreteMat);
 
-// Domek na respawn
-addBox(0, 0, 8, 3.2, 0.4, concreteMat); // tył
-addBox(-4, 0, 0.4, 3.2, 8, concreteMat); // lewa
-addBox(4, 0, 0.4, 3.2, 8, concreteMat); // prawa
-addBox(-2.5, -4, 3.4, 3.2, 0.4, concreteMat); // przód lewy
-addBox(2.5, -4, 3.4, 3.2, 0.4, concreteMat); // przód prawy
-const rf=new THREE.Mesh(new THREE.BoxGeometry(8.8,0.3,8.8),concreteMat);
-rf.position.set(0,3.35,0);rf.castShadow=rf.receiveShadow=true;scene.add(rf);
+// PLATFORMA STARTOWA / ODDZIAŁ (Z dala od centrum, brak blokowania strzałów)
+addBox(30, -40, 10, 0.4, 10, concreteMat); // podłoga
+addBox(25, -40, 0.4, 3.2, 10, concreteMat); // lewa
+addBox(35, -40, 0.4, 3.2, 10, concreteMat); // prawa
+addBox(30, -45, 10, 3.2, 0.4, concreteMat); // tył
+// Zostawiamy przód otwarty, by móc wyjść i strzelać.
 
 const CELLS=[],BL=[],LP=[0,1,2,3].map(()=>{const l=new THREE.PointLight(0xffe2b8,1.2,18);scene.add(l);return l});scene.add(sun.target);
 let lt=0;
@@ -634,7 +632,7 @@ function updNPC(n,dt){
 }
 
 /* GRACZ / VIEWMODEL */
-const P=V(0,1.6,20),K={};
+const P=V(30,1.6,-40),K={};
 let yaw=0,pitch=0,hp=100,dead=false,locked=false,down=false,ads=0,adsOn=false,crouchAmt=0,bob=0,roll=0,sens=1,hurtCd=0,recoil=0,slot=1,cd=0,reloading=0,flashT=0,shake=0,menuN=null,fb=false;
 let flashOn=false,battery=94,batT=0;
 const W={1:{n:'P320 TACTICAL 9MM',mag:15,ammo:15,rate:.16,dmg:34,sp:.008,rl:1.35,pel:1,kick:.045,auto:false,mz:-.16},
@@ -904,7 +902,7 @@ function reset(){
   menuN=null;$('menu').classList.remove('on');initSpawn();log('ARENA ZRESETOWANA');
 }
 function respawn(){
-  dead=false;hp=100;P.set(0,1.6,0);yaw=pitch=0;$('hpf').style.width='100%';
+  dead=false;hp=100;P.set(30,1.6,-40);yaw=pitch=0;$('hpf').style.width='100%';
   $('lostSignalScreen').classList.remove('on');
   $('deadContent').style.display = 'none';
   $('lostVideo').pause();
@@ -988,7 +986,7 @@ $('sens').oninput=e=>sens=+e.target.value;$('rs').onclick=respawn;
 
 /* PĘTLA GŁÓWNA */
 let last=performance.now(),fc=0,ft=0;
-const camPos=V(0,1.6,0),camRot=new THREE.Euler(0,0,0,'YXZ');
+const camPos=V(30,1.6,-40),camRot=new THREE.Euler(0,0,0,'YXZ');
 const camLag=0.18;
 function loop(now){
   requestAnimationFrame(loop);
