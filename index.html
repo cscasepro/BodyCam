@@ -295,7 +295,8 @@ const brickMat=new THREE.MeshStandardMaterial({map:brickTex,bumpMap:brickTex,bum
 [concreteMat,rustMat,woodMat,asphaltMat,metalMat].forEach(m=>{m.bumpMap=m.map;m.bumpScale=1.2});
 
 /* ŚWIAT */
-scene.add(new THREE.HemisphereLight(0xdce6f2,0x3b3e42,0.6));
+const hemi=new THREE.HemisphereLight(0xdce6f2,0x3b3e42,0.6);scene.add(hemi);
+const fogBase=new THREE.Color(0x1b1e23),fogDark=new THREE.Color(0x020203);
 const sun=new THREE.DirectionalLight(0xfff5e8,1.5);sun.position.set(8,15,9);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
 Object.assign(sun.shadow.camera,{left:-26,right:26,top:26,bottom:-26,near:1,far:50});sun.shadow.bias=-.0004;scene.add(sun);
 {const f=new THREE.Mesh(new THREE.PlaneGeometry(120,120),asphaltMat);f.rotation.x=-Math.PI/2;f.receiveShadow=true;scene.add(f)}
@@ -317,24 +318,30 @@ addBox(25, -40, 0.4, 3.2, 10, concreteMat);
 addBox(35, -40, 0.4, 3.2, 10, concreteMat);
 addBox(30, -45, 10, 3.2, 0.4, concreteMat);
 
-// CIEMNA HALA (PODZIELONA NA POKOJE)
-{
-  addBox(-35, -15, 1, 6, 30, concreteMat);
-  addBox(5, -15, 1, 6, 30, concreteMat);
-  addBox(-15, -30, 40, 6, 1, concreteMat);
-  addBox(-27, -0.5, 15, 6, 1, concreteMat);
-  addBox(-3, -0.5, 15, 6, 1, concreteMat);
-  addBox(-15, -15, 1, 6, 20, concreteMat);
-  addBox(-25, -20, 18, 6, 1, concreteMat);
-  addBox(-5, -20, 18, 6, 1, concreteMat);
-  addBox(-25, -10, 18, 6, 1, concreteMat);
-  addBox(-5, -10, 18, 6, 1, concreteMat);
-}
-
-const hallLight = new THREE.PointLight(0xffaa55, 0.5, 30);
-hallLight.position.set(-15, 4, -20); scene.add(hallLight);
-const hallLight2 = new THREE.PointLight(0x5555ff, 0.2, 20);
-hallLight2.position.set(-15, 4, -10); scene.add(hallLight2);
+// ===== HANGAR: zamknięty, ciemny, wiele wejść, osobny teren (bez nakładania na inne budynki) =====
+const HX0=-42,HX1=-12,HZ0=-42,HZ1=-10,HH=6,HT=1,DW=3.4;
+function hallWallX(a,b,z,gaps){const g=gaps.slice().sort((p,q)=>p-q);let cur=a;
+  g.forEach(c=>{const st=c-DW/2;if(st>cur)addBox((cur+st)/2,z,st-cur,HH,HT,concreteMat);cur=c+DW/2});
+  if(b>cur)addBox((cur+b)/2,z,b-cur,HH,HT,concreteMat)}
+function hallWallZ(a,b,x,gaps){const g=gaps.slice().sort((p,q)=>p-q);let cur=a;
+  g.forEach(c=>{const st=c-DW/2;if(st>cur)addBox(x,(cur+st)/2,HT,HH,st-cur,concreteMat);cur=c+DW/2});
+  if(b>cur)addBox(x,(cur+b)/2,HT,HH,b-cur,concreteMat)}
+// ściany zewnętrzne – 6 wejść
+hallWallX(HX0-.5,HX1+.5,HZ0,[-20]);          // południe: 1 wejście
+hallWallX(HX0-.5,HX1+.5,HZ1,[-33,-19]);      // północ: 2 wejścia
+hallWallZ(HZ0,HZ1,HX0,[-20]);                // zachód: 1 wejście
+hallWallZ(HZ0,HZ1,HX1,[-31,-16]);            // wschód: 2 wejścia
+// ściany wewnętrzne – pokoje i przejścia
+hallWallX(HX0,HX1,-26,[-37,-21,-15]);
+hallWallZ(-26,HZ1,-27,[-15]);
+hallWallZ(HZ0,-26,-27,[-37]);
+// skrzynie / osłony w środku
+addBox(-39,-13,2,1.2,2,woodMat);addBox(-33,-22,2.4,2.4,1.5,rustMat);addBox(-15,-22,1.5,1.5,1.5,woodMat);addBox(-22,-23.5,3,1,1.5,concreteMat);
+addBox(-39,-31,1.5,1.5,1.5,woodMat);addBox(-33,-39,2.4,2.2,1.5,rustMat);addBox(-17,-30,2,1.2,2,woodMat);addBox(-14,-39,1.5,1.5,1.5,woodMat);
+// dach (zamknięty budynek – w środku ciemno)
+{const rf=new THREE.Mesh(new THREE.BoxGeometry(HX1-HX0+1.6,.4,HZ1-HZ0+1.6),concreteMat);
+ rf.position.set((HX0+HX1)/2,HH+.2,(HZ0+HZ1)/2);rf.castShadow=rf.receiveShadow=true;scene.add(rf)}
+const inHall=(x,z)=>x>HX0&&x<HX1&&z>HZ0&&z<HZ1;
 
 const CELLS=[],BL=[],LP=[0,1,2,3].map(()=>{const l=new THREE.PointLight(0xffe2b8,1.5,20);scene.add(l);return l});scene.add(sun.target);
 let lt=0;
@@ -356,16 +363,17 @@ function bld(cx,cz,nc,nr,cw,cd,fz){
   rf.position.set(cx,H+.15,cz);rf.castShadow=rf.receiveShadow=true;scene.add(rf);
   BL.push(V(cx,2.6,cz));
 }
-bld(-15,-16,2,2,5.5,4.5,1);bld(15,-16,2,2,5.5,4.5,1);bld(-15,15,2,2,5.5,4.5,-1);bld(15,15,2,2,5.5,4.5,-1);bld(0,-19,3,1,5,5,1);bld(0,5,2,1,5,4,1);
-bld(-36,-30,3,2,5.5,4.5,1);bld(36,-30,3,2,5.5,4.5,1);bld(-36,30,3,2,5.5,4.5,-1);bld(36,30,3,2,5.5,4.5,-1);bld(-36,0,2,3,5,4.5,1);bld(36,0,2,3,5,4.5,1);bld(0,-38,4,2,5.5,4.5,1);bld(0,38,4,2,5.5,4.5,-1);bld(-30,-14,2,1,5,5,1);bld(30,-14,2,1,5,5,1);bld(-30,14,2,1,5,5,-1);bld(30,14,2,1,5,5,-1);
-for(let i=0;i<45;i++){const x=-44+R()*88,z=-44+R()*88;if(Math.hypot(x,z)<8)continue;if(Math.hypot(x,z-20)<8)continue;if(x>-36&&x<4&&z>-30&&z<0)continue;addBox(x,z,1+R()*2.5,.9+R()*1.6,1+R()*2.5,R()<.4?woodMat:concreteMat)}
+bld(15,-16,2,2,5.5,4.5,1);bld(-15,15,2,2,5.5,4.5,-1);bld(15,15,2,2,5.5,4.5,-1);bld(0,-19,3,1,5,5,1);bld(0,5,2,1,5,4,1);
+bld(36,-30,3,2,5.5,4.5,1);bld(-36,30,3,2,5.5,4.5,-1);bld(36,30,3,2,5.5,4.5,-1);bld(-36,0,2,3,5,4.5,1);bld(36,0,2,3,5,4.5,1);bld(0,-38,4,2,5.5,4.5,1);bld(0,38,4,2,5.5,4.5,-1);bld(30,-14,2,1,5,5,1);bld(-30,14,2,1,5,5,-1);bld(30,14,2,1,5,5,-1);
+[[-34,-18],[-20,-18],[-34,-34],[-20,-34],[-37,-26],[-21,-26],[-27,-15],[-27,-37]].forEach(c=>CELLS.push(V(c[0],0,c[1])));
+for(let i=0;i<45;i++){const x=-44+R()*88,z=-44+R()*88;if(Math.hypot(x,z)<8)continue;if(Math.hypot(x,z-20)<8)continue;if(x>-46&&x<-9&&z>-46&&z<-7)continue;addBox(x,z,1+R()*2.5,.9+R()*1.6,1+R()*2.5,R()<.4?woodMat:concreteMat)}
 /* REKWIZYTY */
 const mkM=(c,r,m)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m||0});
 const paintCols=[0x7a1c1c,0x1f3a5f,0x3b3f44,0x8a8a8a,0x2d4a2f,0xb0a070,0x111111];
 const glassM=mkM(0x0b1218,.1,.8),tireM=mkM(0x101010,.95),rimM=mkM(0x8b8b8b,.4,.8),dumpM=mkM(0x2e5a3a,.7,.3),coneM=mkM(0xe8630a,.6),
 barrelM=[mkM(0x2f4f7f,.6,.4),mkM(0x7f2f2f,.6,.4),mkM(0x3a5a3a,.6,.4)],trashM=[mkM(0x1a1a1a,.8),mkM(0x6b5a45,.9),mkM(0xb8b8b0,.8),mkM(0x3d5e8a,.7)],
 bricM=mkM(0x8a4a38,.9),headM=new THREE.MeshBasicMaterial({color:0xfff2c0}),tailM=new THREE.MeshBasicMaterial({color:0x8a0000});
-function propFree(x,z,r){if(Math.abs(x)>44||Math.abs(z)>44)return false;if(x>22&&x<38&&z>-48&&z<-32)return false;if(x>-36&&x<4&&z>-30&&z<0)return false;
+function propFree(x,z,r){if(Math.abs(x)>44||Math.abs(z)>44)return false;if(x>22&&x<38&&z>-48&&z<-32)return false;if(x>-46&&x<-9&&z>-46&&z<-7)return false;
 for(const o of obst){if(Math.abs(x-o.x)<o.w/2+r&&Math.abs(z-o.z)<o.d/2+r)return false}return true}
 function mesh(geo,mat,x,y,z,par){const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;(par||scene).add(m);return m}
 function place(n,r,fn){let t=0,c=0;while(c<n&&t<n*40){t++;const x=-44+R()*88,z=-44+R()*88;if(!propFree(x,z,r))continue;fn(x,z);c++}}
@@ -402,11 +410,9 @@ function los(a,b){const d=b.clone().sub(a),L=d.length();rc.set(a,d.normalize());
 /* AUDIO */
 let ac,master,menuMusic,menuMusicGain;
 const audioLoader=new THREE.AudioLoader();
-const AUDIO_SAMPLES={ pain:[], ak:[], pistol:[] };
+const AUDIO_SAMPLES={ pain:[], ak:[], pistol:[], shot:[], mag:[], pump:[] };
 const audioBuffers={};
-/* UWAGA: nazwy plików poniżej zmień na swoje (pliki obok pliku HTML).
-   Na zrzutach nazwy były ucięte – najprościej zmienić je na ak74.mp3 i pistol.mp3
-   (jeśli to .wav, popraw rozszerzenie tutaj). */
+/* pliki dźwiękowe muszą leżeć obok pliku HTML */
 const AUDIO_FILES={
   pain:[
     'dragon-studio-zombie-dying-sound-357974.mp3',
@@ -414,8 +420,11 @@ const AUDIO_FILES={
     'dragon-studio-male-groan-of-pain-357971.mp3',
     'dragon-studio-cry-of-pain-357978.mp3'
   ],
-  ak:['ak74.mp3'],
-  pistol:['pistol.mp3']
+  ak:['sovetsky_rastov72-ak74-sound-effect-351437.mp3'],
+  pistol:['freesound_community-perdition-1911-pistol-82365.mp3'],
+  shot:['ElevenLabs__Gun_Shot.mp3'],
+  mag:['ElevenLabs_Gun_magazine_load.mp3'],
+  pump:['ElevenLabs_Pump_shotgun_racked_back__heavy_steel_pump_slide,_close-miked,_dry.mp3']
 };
 function loadAudios(){
   for(const cat in AUDIO_FILES){
@@ -471,6 +480,16 @@ function playLocal(cat,vol=1,rate=1){
   const g=ac.createGain();g.gain.value=vol;
   s.connect(g).connect(master);s.start();return true;
 }
+/* listener podąża za kamerą – dzięki temu dźwięki wrogów lecą z ich pozycji, a nie z (0,0,0) */
+const _lf=V(0,0,-1),_lu=V(0,1,0);
+function updListener(){
+  if(!ac)return;const L=ac.listener,p=cam.position;
+  _lf.set(0,0,-1).applyQuaternion(cam.quaternion);_lu.set(0,1,0).applyQuaternion(cam.quaternion);
+  if(L.positionX){L.positionX.value=p.x;L.positionY.value=p.y;L.positionZ.value=p.z;
+    L.forwardX.value=_lf.x;L.forwardY.value=_lf.y;L.forwardZ.value=_lf.z;
+    L.upX.value=_lu.x;L.upY.value=_lu.y;L.upZ.value=_lu.z}
+  else{L.setPosition(p.x,p.y,p.z);L.setOrientation(_lf.x,_lf.y,_lf.z,_lu.x,_lu.y,_lu.z)}
+}
 function tone(f,f2,d,v,ty,dist){
   if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain(),flt=ac.createBiquadFilter();
   o.type=ty||'sine';o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f2,t+d);
@@ -482,7 +501,8 @@ function tone(f,f2,d,v,ty,dist){
 function nz(v,d){if(!ac)return;const n=ac.sampleRate*d|0,b=ac.createBuffer(1,n,ac.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=(R()*2-1)*Math.pow(1-i/n,3);const s=ac.createBufferSource();s.buffer=b;const f=ac.createBiquadFilter();f.type='highpass';f.frequency.value=700;const g=ac.createGain();g.gain.value=v;s.connect(f).connect(g).connect(master);s.start()}
 function groan(p,f,len){
   if(!ac)return;
-  playSfx('pain', p.clone(), 0.8);
+  const q=p.clone();if(q.y<1)q.y=1.2;
+  playSfx('pain', q, 0.8);
 }
 function thump(v,d){
   if(!ac)return;const t=ac.currentTime+d,o=ac.createOscillator(),g=ac.createGain();
@@ -630,7 +650,7 @@ function kill(n,dir){
   n.lv=['armL','armR','legL','legR'].map(()=>({vx:(R()-.5)*16,vz:(R()-.5)*9,tx:(R()-.5)*2,tz:(R()<.5?-1:1)*(.3+R()*.9)}));
   if(R()<.35&&!t){n.lv[2].tx=n.lv[3].tx=1.6}
   n.mt=.5+R();n.mc=2+(R()*3|0);n.faL.rotation.x=-.4-R()*.7;n.faR.rotation.x=-.4-R()*.7;n.shL.rotation.x=R()*.9;n.shR.rotation.x=R()*.9;
-  playSfx('pain', n.g.position.clone(), 1.2, 0.9);
+  playSfx('pain', n.g.position.clone().setY(1.2), 1.2, 0.9);
   n.pool=new THREE.Mesh(decG,new THREE.MeshBasicMaterial({color:0x3a0204,transparent:true,opacity:.92,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3}));
   n.pool.rotation.x=-Math.PI/2;n.pool.scale.setScalar(.01);n.pool.visible=false;scene.add(n.pool);n.pr=0;
 }
@@ -745,7 +765,7 @@ function updNPC(n,dt){
 /* GRACZ / VIEWMODEL */
 const P=V(30,1.6,-40),K={};
 let yaw=Math.PI,pitch=0,hp=100,dead=false,locked=false,down=false,ads=0,adsOn=false,crouchAmt=0,bob=0,roll=0,sens=1,hurtCd=0,recoil=0,slot=1,cd=0,reloading=0,flashT=0,shake=0,menuN=null,fb=false;
-let flashOn=false,battery=94,batT=0;
+let flashOn=false,battery=94,batT=0,dark=0,pumpDone=false;
 const W={1:{n:'P320 TACTICAL 9MM',mag:15,ammo:15,rate:.16,dmg:34,sp:.008,rl:1.35,pel:1,kick:.045,auto:false,mz:-.16},
 2:{n:'AK-74 5.45MM',mag:30,ammo:30,rate:.095,dmg:26,sp:.011,rl:1.75,pel:1,kick:.05,auto:true,mz:-.62},
 3:{n:'M870 BREACHER 12GA',mag:6,ammo:6,rate:.65,dmg:16,sp:.058,rl:2,pel:8,kick:.14,auto:false,mz:-.62}};
@@ -905,7 +925,7 @@ laserDot.visible=false;scene.add(laserDot);
 
 function hud(){const w=W[slot];$('wn').textContent=w.n;$('am').textContent=String(w.ammo).padStart(2,'0');$('mm').textContent='/ '+w.mag;$('rl').textContent=reloading>0?'PRZEŁADOWANIE':''}
 function sw(s){if(reloading>0||!W[s])return;slot=s;for(const k in VM)VM[k].visible=+k===s;tone(750,400,.05,.15,'square');hud()}
-function reload(){const w=W[slot];if(reloading>0||w.ammo===w.mag)return;reloading=w.rl;tone(520,260,.05,.15,'square');hud()}
+function reload(){const w=W[slot];if(reloading>0||w.ammo===w.mag)return;reloading=w.rl;pumpDone=false;if(!playLocal('mag',1))tone(520,260,.05,.15,'square');hud()}
 
 // DŹWIĘKI BRONI (próbka z pliku, a jeśli jej brak – dźwięk syntetyczny)
 function playWeaponSound(type){
@@ -913,7 +933,7 @@ function playWeaponSound(type){
   const t=ac.currentTime;
   if(type===1&&playLocal('pistol',1))return;
   if(type===2&&playLocal('ak',1))return;
-  if(type===3&&playLocal('ak',1.3,.6))return; // strzelba: AK spowolnione
+  if(type===3&&playLocal('shot',1.2))return;
   if(type===1){
     tone(300, 80, .12, .8, 'square');
     tone(150, 50, .2, .6, 'sawtooth');
@@ -1182,6 +1202,7 @@ function loop(now){
         (1-ads)*.06+wallK*.25+(slot<3?Math.sin(rpv*Math.PI)*.4:0)
       );
       if(reloading>0)animReload(VM[slot],rpv);else resetReload(VM[slot]);
+      if(slot===3&&reloading>0&&rpv>=.85&&!pumpDone){pumpDone=true;playLocal('pump',1.1)}
       look(dt);
       rc.set(cam.position,V(0,0,-1).applyQuaternion(cam.quaternion));rc.far=80;
       const lh=rc.intersectObjects([...allHit,...obstM])[0];
@@ -1203,6 +1224,14 @@ function loop(now){
     if(!dead&&hbT<=0){hbT=60/(55+kk*100);const v=.12+kk*.6;thump(v,0);thump(v*.7,.17)}
     $('vig').style.opacity=Math.min(.9,bl*(.8+.2*Math.sin(now*.012*(1+stress*2))));
     updLights(dt);
+    // CIEMNOŚĆ W HANGARZE
+    dark+=((inHall(P.x,P.z)?1:0)-dark)*Math.min(1,dt*3);
+    hemi.intensity=.6*(1-dark)+.025*dark;
+    sun.intensity=1.5*(1-dark);
+    LP.forEach(l=>l.intensity=1.5*(1-dark));
+    scene.fog.color.copy(fogBase).lerp(fogDark,dark);scene.background.copy(scene.fog.color);
+    scene.fog.density=.018+.03*dark;
+    if(flashOn)flashlight.intensity=2.5+dark*2.5;
     wv-=dt;
     if(wv<=0){wv=6;if(npcs.filter(n=>!n.dead).length<8){for(let i=0;i<3;i++){let x,z;do{x=-44+R()*88;z=-44+R()*88}while(Math.hypot(x-P.x,z-P.z)<25);spawn(x,z)}log('POSIŁKI WROGA')}}
     batT+=dt;
@@ -1212,6 +1241,7 @@ function loop(now){
       $('stor').textContent=(4.2+battery*.01).toFixed(1);
     }
   }
+  updListener();
   U.time.value=now*.001;
   renderer.setRenderTarget(rt);renderer.render(scene,cam);
   renderer.setRenderTarget(null);U.t.value=rt.texture;renderer.render(qs,qc);
@@ -1223,6 +1253,7 @@ function loop(now){
     $('cnt').textContent='WROGOWIE: '+npcs.filter(n=>!n.dead).length+' | ZABICI: '+kills+' [G | X]';
   }
 }
-function initSpawn(){for(let i=0;i<18;i++){let x,z;do{x=-44+R()*88;z=-44+R()*80}while(Math.hypot(x,z)<22);spawn(x,z)}}
+function initSpawn(){for(let i=0;i<18;i++){let x,z;do{x=-44+R()*88;z=-44+R()*80}while(Math.hypot(x,z)<22||inHall(x,z)||(x>-46&&x<-9&&z>-46&&z<-7));spawn(x,z)}
+  [[-35,-18],[-20,-18],[-35,-34],[-22,-34]].forEach(c=>spawn(c[0],c[1]))}
 sw(1);initSpawn();requestAnimationFrame(loop);
 </script></body></html>
