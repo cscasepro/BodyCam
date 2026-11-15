@@ -64,7 +64,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
  -webkit-mask-image:linear-gradient(270deg,transparent var(--w),#000 calc(var(--w) + 4%));
  mask-image:linear-gradient(270deg,transparent var(--w),#000 calc(var(--w) + 4%))}
 #rhand{position:absolute;height:56vh;width:119vh;top:50%;left:100%;opacity:0;transform:translate(0,-50%);filter:drop-shadow(0 8px 12px rgba(0,0,0,.65))}
-#ldr{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:200;display:none;padding:6px 14px;background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.25);color:#fff;font:11px/1.4 monospace;letter-spacing:2px;pointer-events:none;text-align:center;max-width:90vw}
+#ldr{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:200;display:none;padding:6px 14px;background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.25);color:#fff;font:11px/1.5 monospace;letter-spacing:1px;text-align:center;max-width:90vw;word-break:break-word;user-select:text}
 </style></head><body>
 <div id="box">
 <div id="mainMenu">
@@ -981,7 +981,7 @@ const FBX_FILES={model:'sas cs16.fbx',walk:'Walking.fbx',back:'Walking Backwards
   deathfwd:'Standing Death Forward 01.fbx',deathleft:'Standing Death Left 01.fbx',dying:'Dying.fbx',rifledie:'Rifle Run To Dying.fbx',gun:'Gunplay.fbx'};
 const TEX_FILES={head:'SAS_head.png',chrome:'SAS_chrome.png',body:'SAS_body.png'};
 const ASSETS={state:'loading',holder:null,clips:{}};
-const nk=s=>s.toLowerCase().replace(/[^a-z0-9.]/g,''),bk=s=>s.replace(/^mixamorig\d*:?/i,'').toLowerCase();
+const nk=s=>s.toLowerCase().replace(/[^a-z0-9.]/g,''),bk=s=>s.replace(/^(mixamorig\d*|armature|bip\d+)[:_ |.-]*/i,'').toLowerCase();
 const boneMap=o=>{const m={};o.traverse(c=>{if(c.isBone)m[bk(c.name)]=c});return m};
 const nameOf=t=>t.name.slice(0,t.name.lastIndexOf('.'));
 
@@ -1031,38 +1031,69 @@ function reskin(tpl,tex){
   console.log('[SAS] materiały:\n'+rep.join('\n'));
 }
 
+async function ensureLibs(){
+  const hosts=['https://cdn.jsdelivr.net/npm/three@0.128.0/','https://unpkg.com/three@0.128.0/'];
+  const lib=(ok,path)=>ok()?Promise.resolve():new Promise(res=>{
+    const t=i=>{if(i>=hosts.length)return res();const sc=document.createElement('script');sc.src=hosts[i]+path;sc.onload=res;sc.onerror=()=>t(i+1);document.head.appendChild(sc)};t(0)});
+  await lib(()=>typeof Zlib!=='undefined','examples/js/libs/inflate.min.js');
+  await lib(()=>THREE.FBXLoader,'examples/js/loaders/FBXLoader.js');
+  await lib(()=>THREE.SkeletonUtils,'examples/js/utils/SkeletonUtils.js');
+  if(!THREE.FBXLoader||!THREE.SkeletonUtils)throw new Error('nie załadowały się biblioteki FBXLoader/SkeletonUtils (CDN zablokowany?)');
+}
+
 async function loadAssets(){
-  const ov=$('ldr'),show=t=>{ov.style.display='block';ov.textContent=t};
+  const ov=$('ldr'),show=t=>{ov.style.display='block';ov.textContent=t},step=t=>{ASSETS.step=t};
   show('ŁADOWANIE POSTACI SAS…');
-  const {br,files}=await ghTree();
-  const url=name=>{const k=nk(name),p=files.find(f=>nk(f.split('/').pop())===k);
-    return p?'https://raw.githubusercontent.com/'+GH_REPO+'/'+br+'/'+p.split('/').map(encodeURIComponent).join('/'):null};
+  step('biblioteki');await ensureLibs();
+  // 1) lista plików w repo (jeśli gra stoi na serwerze obok plików – pobieramy lokalnie, GitHub tylko awaryjnie)
+  step('lista plików z GitHuba');
+  let tree=null;try{tree=await ghTree()}catch(e){console.warn('[SAS]',e.message)}
+  const remote=name=>{if(!tree)return null;const k=nk(name),p=tree.files.find(f=>nk(f.split('/').pop())===k);
+    return p?'https://raw.githubusercontent.com/'+GH_REPO+'/'+tree.br+'/'+p.split('/').map(encodeURIComponent).join('/'):null};
+  const isHttp=/^https?:$/.test(location.protocol);
+  const getFile=async name=>{
+    if(isHttp){try{const r=await fetch(encodeURI(name));if(r.ok&&!/text\/html/.test(r.headers.get('content-type')||''))return r}catch(e){}}
+    const u=remote(name);if(!u)return null;
+    const r=await fetch(u);if(!r.ok)throw new Error(name+' → HTTP '+r.status);return r;
+  };
   const total=Object.keys(FBX_FILES).length+Object.keys(TEX_FILES).length;let done=0;
   const tick=()=>{show('ŁADOWANIE POSTACI SAS… '+(++done)+'/'+total)};
-  const bufs={},tex={};
+  const bufs={},tex={},missing=[];
+  step('pobieranie plików');
   await Promise.all([
     ...Object.entries(FBX_FILES).map(async([k,f])=>{
-      const u=url(f);if(!u){console.warn('[SAS] brak pliku w repo:',f);return tick()}
-      const r=await fetch(u);if(!r.ok)throw new Error(f+' → HTTP '+r.status);bufs[k]=await r.arrayBuffer();tick()}),
+      const r=await getFile(f);if(!r){missing.push(f);return tick()}
+      bufs[k]=await r.arrayBuffer();tick()}),
     ...Object.entries(TEX_FILES).map(async([k,f])=>{
-      const u=url(f);if(!u){console.warn('[SAS] brak tekstury w repo:',f);return tick()}
-      tex[k]=await new Promise(res=>new THREE.TextureLoader().load(u,t=>{t.encoding=THREE.sRGBEncoding;t.anisotropy=4;res(t)},undefined,()=>{console.warn('[SAS] nie wczytano',f);res(null)}));tick()})
+      try{const r=await getFile(f);if(!r){missing.push(f);return tick()}
+        const url=URL.createObjectURL(await r.blob());
+        tex[k]=await new Promise(res=>new THREE.TextureLoader().load(url,t=>{t.encoding=THREE.sRGBEncoding;t.anisotropy=4;res(t)},undefined,()=>{console.warn('[SAS] nie wczytano obrazka',f);res(null)}))
+      }catch(e){console.warn('[SAS] tekstura',f,e)}tick()})
   ]);
-  // parsowanie FBX (tekstury zawarte w FBX ignorujemy – używamy swoich)
+  if(missing.length)console.warn('[SAS] nie znaleziono plików:',missing.join(', '));
+  if(!bufs.walk)throw new Error('nie udało się pobrać Walking.fbx'+(tree?'':' (brak dostępu do GitHuba)'));
+  // 2) parsowanie FBX (tekstury zawarte w FBX ignorujemy – używamy swoich)
   const mgr=new THREE.LoadingManager();mgr.setURLModifier(()=>'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==');
-  const ld=new THREE.FBXLoader(mgr),objs={};
+  const ld=new THREE.FBXLoader(mgr),objs={},perr=[];
   for(const k of Object.keys(bufs)){
-    await new Promise(r=>setTimeout(r,0));
-    try{objs[k]=ld.parse(bufs[k],'')}catch(e){console.warn('[SAS] błąd parsowania FBX:',k,e)}
+    step('parsowanie '+FBX_FILES[k]);await new Promise(r=>setTimeout(r,0));
+    try{objs[k]=ld.parse(bufs[k],'')}catch(e){console.warn('[SAS] błąd parsowania FBX:',k,e);perr.push(FBX_FILES[k]+': '+(e&&e.message||e))}
   }
   const clipOf=o=>{const a=o&&o.animations;return a&&a.length?a.reduce((p,c)=>c.duration>p.duration?c:p):null};
   const wclip=clipOf(objs.walk);
-  if(!wclip)throw new Error('brak/uszkodzony Walking.fbx');
-  // szablon = plik, którego szkielet pasuje do animacji (sas cs16.fbx albo – jeśli nie ma szkieletu – mesh z Walking.fbx)
+  if(!wclip)throw new Error('Walking.fbx nie zawiera animacji / nie da się go odczytać. '+perr.join(' | '));
+  step('dopasowanie szkieletu');
   const cov=m=>{const ns=new Set(wclip.tracks.map(nameOf).map(bk));let h=0;ns.forEach(k=>{if(m[k])h++});return h/ns.size};
-  let tpl=null,best=-1;
-  for(const c of[objs.model,objs.walk]){if(!c)continue;const m=boneMap(c),s=m.hips?cov(m):0;console.log('[SAS] kandydat:',c===objs.model?'sas cs16.fbx':'Walking.fbx','kości:',Object.keys(m).length,'zgodność z animacją:',Math.round(s*100)+'%');if(s>best){best=s;tpl=c}}
-  if(!tpl||best<.6)throw new Error('szkielet modelu nie pasuje do animacji (zgodność '+Math.round(best*100)+'%)');
+  let tpl=null,best=-1;const info=[];
+  for(const c of[objs.model,objs.walk]){
+    if(!c)continue;const m=boneMap(c),s=m.hips?cov(m):0,nm=c===objs.model?'sas cs16.fbx':'Walking.fbx';
+    let meshes=0;c.traverse(o=>{if(o.isMesh)meshes++});
+    info.push(nm+': kości '+Object.keys(m).length+' ['+Object.keys(m).slice(0,4).join(',')+'…], meshe '+meshes+', zgodność '+Math.round(s*100)+'%');
+    console.log('[SAS] kandydat',info[info.length-1]);
+    if(meshes&&s>best){best=s;tpl=c}
+  }
+  if(!tpl||best<.6)throw new Error('szkielet modelu nie pasuje do animacji. '+info.join(' | ')+' | animacja używa: '+[...new Set(wclip.tracks.map(nameOf))].slice(0,4).join(',')+'…'+(perr.length?' | '+perr.join(' | '):''));
+  step('budowa modelu');
   reskin(tpl,tex);
   const map=boneMap(tpl);tpl.updateMatrixWorld(true);
   // wykrycie w którą stronę patrzy model (ma patrzeć na +Z)
@@ -1077,7 +1108,7 @@ async function loadAssets(){
   if(isFinite(H)&&H>1e-4)holder.scale.setScalar(1.78/H);
   holder.updateMatrixWorld(true);box.setFromObject(holder);holder.position.y=-box.min.y;
   console.log('[SAS] wysokość oryginału:',H,'obrót:',(ang*57.3).toFixed(0)+'°');
-  // animacje
+  step('animacje');
   const hips=map.hips,rest=hips.position.clone();
   const w0=wclip.tracks.find(t=>bk(nameOf(t))==='hips'&&/\.position$/.test(t.name));
   let ratio=1;
@@ -1770,5 +1801,5 @@ function loop(now){
 function initSpawn(){for(let i=0;i<18;i++){let x,z;do{x=-44+R()*88;z=-44+R()*80}while(Math.hypot(x,z)<22||inHall(x,z)||(x>-46&&x<-9&&z>-46&&z<-7));spawn(x,z)}
   [[-35,-18],[-20,-18],[-35,-34],[-22,-34]].forEach(c=>spawn(c[0],c[1]))}
 sw(1);requestAnimationFrame(loop);
-loadAssets().catch(e=>{console.error('[SAS]',e);ASSETS.state='failed';const o=$('ldr');o.style.display='block';o.textContent='NIE WCZYTANO MODELU SAS ('+(e&&e.message||e)+') – używam starego przeciwnika';setTimeout(()=>o.style.display='none',9000)}).then(()=>initSpawn());
+loadAssets().catch(e=>{const msg='NIE WCZYTANO MODELU SAS ['+(ASSETS.step||'?')+']: '+(e&&e.message||e)+' — używam starego przeciwnika (kliknij, aby ukryć)';console.error('[SAS]',msg,e);ASSETS.state='failed';const o=$('ldr');o.style.display='block';o.style.pointerEvents='auto';o.style.cursor='pointer';o.textContent=msg;o.onclick=()=>o.style.display='none'}).then(()=>initSpawn());
 </script></body></html>
