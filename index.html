@@ -417,13 +417,24 @@ const audioBuffers={},audioTrim={},lastSrc={};
    wycinana automatycznie. */
 const SOUND_SKIP={ak:0,pistol:0,shot:0,mag:0,pump:0,pain:0};
 function silenceEnd(buf){
-  const th=0.02,n=buf.length,sr=buf.sampleRate;
-  for(let i=0;i<n;i++){
-    for(let c=0;c<buf.numberOfChannels;c++){
-      if(Math.abs(buf.getChannelData(c)[i])>th)return Math.max(0,i/sr-0.004);
-    }
+  // szukamy pierwszego PRAWDZIWEGO huku: próg = 15% najgłośniejszego szczytu pliku (ignoruje ciche szumy/cichy wstęp)
+  const n=buf.length,sr=buf.sampleRate,ch=[];
+  for(let c=0;c<buf.numberOfChannels;c++)ch.push(buf.getChannelData(c));
+  let peak=0;
+  for(let i=0;i<n;i++)for(let c=0;c<ch.length;c++){const v=Math.abs(ch[c][i]);if(v>peak)peak=v}
+  const th=Math.max(.02,peak*.15);
+  for(let i=0;i<n;i++)for(let c=0;c<ch.length;c++){
+    if(Math.abs(ch[c][i])>th)return Math.max(0,i/sr-.012);
   }
   return 0;
+}
+/* Strojenie na żywo: [ = dźwięk aktualnej broni później, ] = wcześniej (krok 0.05 s) */
+function adjustSkip(delta){
+  const cat=slot===1?'pistol':slot===2?'ak':'shot';
+  (AUDIO_FILES[cat]||[]).forEach(f=>{audioTrim[f]=Math.max(0,(audioTrim[f]||0)+delta)});
+  const f=(AUDIO_FILES[cat]||[])[0];
+  log('DŹWIĘK '+cat.toUpperCase()+': start próbki = '+((audioTrim[f]||0).toFixed(2))+' s');
+  console.log('audioTrim',cat,audioTrim[f]);
 }
 /* pliki dźwiękowe muszą leżeć obok pliku HTML */
 const AUDIO_FILES={
@@ -444,7 +455,7 @@ function loadAudios(){
     AUDIO_FILES[cat].forEach(file=>{
       audioLoader.load(file,buffer=>{
         audioBuffers[file]=buffer;
-        audioTrim[file]=Math.max(0,silenceEnd(buffer)+(SOUND_SKIP[cat]||0));
+        audioTrim[file]=Math.max(0,silenceEnd(buffer)+(SOUND_SKIP[cat]||0));console.log('trim',file,audioTrim[file].toFixed(3)+'s z '+buffer.duration.toFixed(2)+'s');
         AUDIO_SAMPLES[cat].push(file);
       },undefined,err=>console.warn('Błąd audio (może plik nie istnieje):',file));
     });
@@ -1142,6 +1153,7 @@ addEventListener('keydown',e=>{
   if(menuN&&/^Digit[123]$/.test(e.code)){menuAct(e.code.slice(5));return}
   if(e.code==='Digit1')sw(1);if(e.code==='Digit2')sw(2);if(e.code==='Digit3')sw(3);
   if(e.code==='KeyR')reload();
+  if(e.code==='BracketRight')adjustSkip(.05);if(e.code==='BracketLeft')adjustSkip(-.05);
   if(e.code==='Space'&&jy<=0)jv=4.4;
   if(e.code==='KeyC'&&K.ShiftLeft&&K.KeyW&&slideT<=0)slideT=.7;
   if(e.code==='KeyG')spawn();if(e.code==='KeyX')reset();
