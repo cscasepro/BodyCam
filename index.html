@@ -298,7 +298,7 @@ addBox(0,-13,8,1.2,2,concreteMat);addBox(0,12,8,1.2,2,concreteMat);
 addBox(-14,0,2,1.2,8,concreteMat);addBox(14,0,2,1.2,8,concreteMat);
 addBox(0,-2,5,2,1.2,concreteMat);
 
-// NOWOŚĆ: Domek na respawn (na środku)
+// Domek na respawn
 addBox(0, 0, 8, 3.2, 0.4, concreteMat); // tył
 addBox(-4, 0, 0.4, 3.2, 8, concreteMat); // lewa
 addBox(4, 0, 0.4, 3.2, 8, concreteMat); // prawa
@@ -791,7 +791,7 @@ function fire(){
   tone(slot===1?180:140, 40, .15, .6, 'square'); // NATYCHMIASTOWY STRZAŁ
   
   nz(.4,.6);
-  scene.updateMatrixWorld();
+  scene.updateMatrixWorld(true); // KLUCZOWA POPRAWKA
   
   const rayTargets = allHit.concat(obstM);
   
