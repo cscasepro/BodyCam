@@ -796,7 +796,7 @@ const rg=grp(rS,rM,rRH,rLH,
   cy(.0125,.042,0,.028,-.62,stl),
   bx(.011,.042,.013,0,.054,-.475,stl),
   bx(.031,.035,.072,0,.092,-.083,pol),
-  bx(.027,.025,.005,0,.094,-.12,lens),
+  bx(.027,.025,.005,0,.094,-.12,lens), // PRZEZIERNE SZKŁO
   bx(.005,.005,.005,0,.094,-.078,dot),
   rtx(bx(.035,.105,.042,0,-.093,.052,pol),.3),
   bx(.021,.005,.062,0,-.06,-.032,pol),
@@ -1092,7 +1092,16 @@ function loop(now){
       ads+=((adsOn&&reloading<=0?1:0)-ads)*Math.min(1,dt*14);
       recoil+=(0-recoil)*Math.min(1,dt*16);
       shake=Math.max(0,shake-dt*.12);
-      cam.fov+=((adsOn?70:spr?104:100)-cam.fov)*Math.min(1,dt*12);cam.updateProjectionMatrix();
+      
+      // PRZYBLIŻENIE (ZOOM) - dostosowane do celownika
+      let targetFov = 100;
+      if (adsOn) {
+        targetFov = slot === 2 ? 45 : (slot === 1 ? 60 : 55); // Karabin 45, Pistolet 60, Strzelba 55
+      } else if (spr) {
+        targetFov = 104;
+      }
+      cam.fov+=(targetFov-cam.fov)*Math.min(1,dt*12);cam.updateProjectionMatrix();
+      
       const breathing=Math.sin(now*.001*1.3)*.003+Math.sin(now*.001*2.1)*.002;
       const hpShake=(hp<50?(50-hp)/50*.012:0);
       const targetPitch=pitch+by*.35+breathing+(R()-.5)*hpShake;
@@ -1107,10 +1116,13 @@ function loop(now){
       P.y=cam.position.y;
       if(reloading>0){reloading-=dt;if(reloading<=0){W[slot].ammo=W[slot].mag;hud()}}
       if(flashT>0){flashT-=dt;if(flashT<=0)mzl.intensity=0}
+      
+      // PRZESUNIĘCIE BRONI DO OKA (ADS)
       const px=(1-ads)*.15,py=-.15+ads*(.15-VM[slot].userData.sy),pz=-.26+ads*.05;
       vm.position.set(px+bx*.35*(1-ads*.65),
         py-by*.45*(1-ads*.65)-(reloading>0?Math.sin((1-reloading/W[slot].rl)*Math.PI)*.14:0),
         pz+recoil);
+      
       rc.set(cam.position,V(0,0,-1).applyQuaternion(cam.quaternion));rc.far=1.3;
       const wh=rc.intersectObjects(obstM)[0];
       wallK+=((wh?Math.min(1,Math.max(0,1-(wh.distance-.2)/1)):0)-wallK)*Math.min(1,dt*12);
