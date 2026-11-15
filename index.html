@@ -64,13 +64,74 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
  -webkit-mask-image:linear-gradient(270deg,transparent var(--w),#000 calc(var(--w) + 4%));
  mask-image:linear-gradient(270deg,transparent var(--w),#000 calc(var(--w) + 4%))}
 #rhand{position:absolute;height:56vh;width:119vh;top:50%;left:100%;opacity:0;transform:translate(0,-50%);filter:drop-shadow(0 8px 12px rgba(0,0,0,.65))}
+/* NOWE MENU GŁÓWNE */
+#menuShade{position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(0,0,0,.93) 0%,rgba(0,0,0,.72) 36%,rgba(0,0,0,.2) 66%,rgba(0,0,0,.55) 100%)}
+#menuChar{position:absolute;right:0;top:0;width:54%;height:100%;z-index:2;pointer-events:none}
+#menuLeft{position:absolute;left:6vw;top:50%;transform:translateY(-50%);z-index:5;width:min(460px,88vw);max-height:94vh;overflow:auto;scrollbar-width:none}
+.mtitle{font-size:46px;letter-spacing:12px;color:#fff;text-shadow:0 0 20px rgba(255,0,0,.8);animation:pulse 2s infinite;margin:0}
+.msub{color:#a1a1aa;letter-spacing:4px;font-size:12px;margin:2px 0 32px}
+.mview{display:none}.mview.on{display:block}
+.mbtn{display:flex;justify-content:space-between;align-items:center;width:100%;padding:16px 22px;margin:0 0 10px;background:rgba(15,15,18,.74);color:#fff;border:1px solid rgba(255,255,255,.14);border-left:4px solid #dc2626;border-radius:4px;font:inherit;font-size:16px;letter-spacing:4px;cursor:pointer;transition:all .15s;text-align:left}
+.mbtn:hover{background:rgba(220,38,38,.3);transform:translateX(8px);border-left-color:#ef4444}
+.mbtn span{font-size:11px;color:#a1a1aa;letter-spacing:3px}
+.mpanel h2{margin:0 0 6px;font-size:22px;letter-spacing:6px;color:#fff}
+.mpanel p{font:12px/1.5 system-ui,sans-serif;color:#c4c4cc;margin:0 0 14px}
+.mpanel label{display:block;font-size:11px;letter-spacing:3px;color:#a1a1aa;margin:10px 0 4px}
+.mpanel input[type=text],.mpanel input:not([type]){width:100%;padding:11px 12px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#fff;font:inherit;user-select:text;-webkit-user-select:text;margin-bottom:6px}
+#mpStat{font-size:12px;color:#fbbf24;margin:4px 0 14px;letter-spacing:1px;min-height:16px}
+.srow{display:flex;justify-content:space-between;align-items:center;gap:14px;margin:0 0 16px;font-size:12px;letter-spacing:3px}
+.srow input{flex:1;max-width:220px}
+#wpPts{font-size:15px;color:#fbbf24;letter-spacing:3px;margin:0 0 6px}
+#skinList{margin:0 0 12px;display:flex;flex-direction:column;gap:6px}
+.skrow{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:12px;padding:8px 12px;background:rgba(15,15,18,.74);border:1px solid rgba(255,255,255,.12);border-radius:4px;font-size:13px;letter-spacing:2px}
+.skrow.eq{border-color:#10b981;background:rgba(16,185,129,.12)}
+.skrow .sw{width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,255,255,.4);display:block}
+.skb{padding:7px 14px;background:#059669;color:#fff;border:0;border-radius:4px;font:bold 11px ui-monospace,monospace;letter-spacing:2px;cursor:pointer}
+.skb:disabled{background:#3f3f46;color:#9ca3af;cursor:default}
 </style></head><body>
 <div id="box">
 <div id="mainMenu">
   <div id="bgContainer"></div>
-  <h1>BODYCAM</h1>
-  <p>AXON BODY 4 // TACTICAL SIMULATOR</p>
-  <button id="startBtn">START</button>
+  <div id="menuShade"></div>
+  <canvas id="menuChar"></canvas>
+  <div id="menuLeft">
+    <h1 class="mtitle">BODYCAM</h1>
+    <div class="msub">AXON BODY 4 // TACTICAL SIMULATOR</div>
+
+    <div id="mmain" class="mview on">
+      <button class="mbtn" id="mSingle"><b>PLAY</b><span>SINGLEPLAYER</span></button>
+      <button class="mbtn" id="mMulti"><b>MULTIPLAYER</b><span>ONLINE</span></button>
+      <button class="mbtn" id="mWeap"><b>WEAPONS</b><span id="mPts">0 PKT</span></button>
+      <button class="mbtn" id="mSet"><b>SETTINGS</b></button>
+    </div>
+
+    <div id="vMulti" class="mview mpanel">
+      <h2>MULTIPLAYER</h2>
+      <p>Tryb online z prawdziwymi graczami jest w przygotowaniu. Możesz już wpisać nick i adres serwera, żeby sprawdzić połączenie.</p>
+      <label>NICK</label><input id="mpNick" type="text" maxlength="16" placeholder="np. KOWALSKI">
+      <label>SERWER (wss://…)</label><input id="mpUrl" type="text" placeholder="wss://twoja-gra.onrender.com">
+      <button class="mbtn" id="mpGo" style="margin-top:12px"><b>TESTUJ POŁĄCZENIE</b></button>
+      <div id="mpStat">● OFFLINE</div>
+      <button class="mbtn mback"><b>← WSTECZ</b></button>
+    </div>
+
+    <div id="vWeap" class="mview mpanel">
+      <h2>WEAPONS</h2>
+      <div id="wpPts"></div>
+      <p>Kolor broni kupujesz za punkty: 1 zabity wróg = 1 punkt. Najedź na kolor, żeby zobaczyć podgląd na postaci.</p>
+      <div id="skinList"></div>
+      <button class="mbtn mback"><b>← WSTECZ</b></button>
+    </div>
+
+    <div id="vSet" class="mview mpanel">
+      <h2>SETTINGS</h2>
+      <div class="srow"><span>CZUŁOŚĆ MYSZY</span><input id="sens2" type="range" min=".3" max="2.5" step=".1" value="1"></div>
+      <div class="srow"><span>GŁOŚNOŚĆ</span><input id="vol" type="range" min="0" max="1" step=".05" value="1"></div>
+      <button class="mbtn" id="fsBtn"><b>PEŁNY EKRAN</b></button>
+      <button class="mbtn" id="rstBtn"><b>RESET POSTĘPU</b><span>PUNKTY + KOLORY</span></button>
+      <button class="mbtn mback"><b>← WSTECZ</b></button>
+    </div>
+  </div>
 </div>
 
 <div id="scan" class="o"></div><div id="ret" class="o"></div><div id="hm" class="o"></div><div id="vig" class="o"></div>
@@ -429,7 +490,7 @@ const rc=new THREE.Raycaster();
 function los(a,b){const d=b.clone().sub(a),L=d.length();rc.set(a,d.normalize());rc.far=L;return rc.intersectObjects(obstM).length===0}
 
 /* AUDIO */
-let ac,master,menuMusic,menuMusicGain;
+let ac,master,menuMusic,menuMusicGain,volNode,gVol=1;
 const audioLoader=new THREE.AudioLoader();
 const AUDIO_SAMPLES={ pain:[], ak:[], pistol:[], shot:[], mag:[], pump:[], beg:[] };
 const audioBuffers={},audioTrim={},lastSrc={};
@@ -489,7 +550,7 @@ function initAudio(){
   master=ac.createDynamicsCompressor();
   master.threshold.value=-18;master.knee.value=6;master.ratio.value=12;
   master.attack.value=.003;master.release.value=.12;
-  master.connect(ac.destination);
+  volNode=ac.createGain();volNode.gain.value=gVol;master.connect(volNode).connect(ac.destination);
   const n=ac.sampleRate*4|0,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
   for(let i=0;i<n;i++)d[i]=(R()-.5)*.5;
   const src=ac.createBufferSource();src.buffer=b;src.loop=true;
@@ -700,7 +761,7 @@ function mkNPC(x,z){
 const wrap=a=>{while(a>Math.PI)a-=6.283;while(a<-Math.PI)a+=6.283;return a};
 
 function kill(n,dir){
-  n.dead=true;kills++;n.gun.visible=false;
+  n.dead=true;kills++;addPoint();n.gun.visible=false;
   n.vel.copy(dir).multiplyScalar(3.5);n.vel.y=0;
   const f=Math.sin(n.yaw)*dir.x+Math.cos(n.yaw)*dir.z,s=Math.cos(n.yaw)*dir.x-Math.sin(n.yaw)*dir.z,t=Math.abs(f)>.45?0:1;
   n.tx=t?0:(f<0?-1.55:1.55);n.tz=t?(s>0?-1.55:1.55):0;n.spin=(R()-.5)*(t?2:5);n.fs=2+R()*2.2;n.fall=0;
@@ -1206,7 +1267,176 @@ function setupMenu(){
 }
 setupMenu();
 
-$('startBtn').onclick=()=>{
+/* ===== MENU: zapis, kolory broni, ustawienia, multiplayer, postać 3D ===== */
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const SKINS=[
+  {id:'def',name:'FABRYCZNY',color:null,cost:0},
+  {id:'tan',name:'DESERT TAN',color:0xb59a6a,cost:50},
+  {id:'od',name:'OD GREEN',color:0x4a5a35,cost:50},
+  {id:'red',name:'CRIMSON',color:0x9a1a1a,cost:100},
+  {id:'navy',name:'NAVY',color:0x1f3f7a,cost:100},
+  {id:'white',name:'ARCTIC',color:0xdcdcdc,cost:150},
+  {id:'pink',name:'NEON PINK',color:0xe0409a,cost:200},
+  {id:'gold',name:'GOLD',color:0xd4a72c,cost:500,metal:true}
+];
+let pts=LS.get('bc_pts',0),owned=LS.get('bc_owned',['def']),equipped=LS.get('bc_skin','def');
+const stlTexMap=stlTex.map;
+function saveProg(){LS.set('bc_pts',pts);LS.set('bc_owned',owned);LS.set('bc_skin',equipped)}
+function addPoint(){pts++;LS.set('bc_pts',pts);const e=$('mPts');if(e)e.textContent=pts+' PKT'}
+function applySkin(id){
+  const sk=SKINS.find(k=>k.id===id)||SKINS[0];
+  if(sk.color===null){
+    pol.map=polT;pol.color.set(0xffffff);pol.metalness=.1;pol.roughness=.8;
+    stlTex.map=stlTexMap;stlTex.color.set(0xffffff);stlTex.metalness=.85;stlTex.roughness=.4;
+  } else {
+    pol.map=null;pol.color.set(sk.color);pol.metalness=sk.metal?.9:.15;pol.roughness=sk.metal?.3:.6;
+    stlTex.map=null;stlTex.color.set(sk.color);stlTex.metalness=sk.metal?.9:.45;stlTex.roughness=sk.metal?.28:.45;
+  }
+  pol.needsUpdate=true;stlTex.needsUpdate=true;
+}
+function renderSkins(){
+  const L=$('skinList');L.innerHTML='';$('wpPts').textContent='PUNKTY: '+pts;$('mPts').textContent=pts+' PKT';
+  SKINS.forEach(sk=>{
+    const own=owned.includes(sk.id),eq=equipped===sk.id;
+    const row=document.createElement('div');row.className='skrow'+(eq?' eq':'');
+    const hex=sk.color===null?'linear-gradient(135deg,#222,#666)':'#'+sk.color.toString(16).padStart(6,'0');
+    row.innerHTML='<i class="sw" style="background:'+hex+'"></i><b>'+sk.name+'</b>';
+    const btn=document.createElement('button');btn.className='skb';
+    btn.textContent=eq?'WYBRANY':own?'WYBIERZ':'KUP · '+sk.cost;
+    btn.disabled=eq||(!own&&pts<sk.cost);
+    btn.onclick=()=>{
+      if(!own){if(pts<sk.cost)return;pts-=sk.cost;owned.push(sk.id)}
+      equipped=sk.id;saveProg();applySkin(equipped);renderSkins();
+    };
+    row.appendChild(btn);
+    row.onmouseenter=()=>applySkin(sk.id);row.onmouseleave=()=>applySkin(equipped);
+    L.appendChild(row);
+  });
+}
+function showView(id){
+  document.querySelectorAll('.mview').forEach(v=>v.classList.toggle('on',v.id===id));
+  if(id==='vWeap')renderSkins();else applySkin(equipped);
+}
+$('mMulti').onclick=()=>showView('vMulti');
+$('mWeap').onclick=()=>showView('vWeap');
+$('mSet').onclick=()=>showView('vSet');
+document.querySelectorAll('.mback').forEach(b=>b.onclick=()=>showView('mmain'));
+$('mPts').textContent=pts+' PKT';
+applySkin(equipped);
+
+/* ustawienia */
+sens=LS.get('bc_sens',1);$('sens').value=sens;$('sens2').value=sens;
+gVol=LS.get('bc_vol',1);$('vol').value=gVol;
+$('sens2').oninput=e=>{sens=+e.target.value;$('sens').value=sens;LS.set('bc_sens',sens)};
+$('sens').addEventListener('input',e=>{LS.set('bc_sens',+e.target.value);$('sens2').value=e.target.value});
+$('vol').oninput=e=>{gVol=+e.target.value;LS.set('bc_vol',gVol);if(volNode)volNode.gain.value=gVol};
+$('fsBtn').onclick=()=>{const d=document.documentElement;if(document.fullscreenElement)document.exitFullscreen();else if(d.requestFullscreen)d.requestFullscreen()};
+$('rstBtn').onclick=()=>{if(confirm('Zresetować punkty i odblokowane kolory?')){pts=0;owned=['def'];equipped='def';saveProg();applySkin('def');$('mPts').textContent='0 PKT'}};
+
+/* multiplayer – test połączenia z serwerem WebSocket */
+$('mpNick').value=LS.get('bc_nick','');$('mpUrl').value=LS.get('bc_url','');
+$('mpGo').onclick=()=>{
+  const url=$('mpUrl').value.trim(),st=$('mpStat');LS.set('bc_nick',$('mpNick').value);LS.set('bc_url',url);
+  if(!/^wss?:\/\//.test(url)){st.textContent='● PODAJ ADRES ZACZYNAJĄCY SIĘ OD wss://';return}
+  st.textContent='● ŁĄCZENIE…';let ws;
+  try{ws=new WebSocket(url)}catch(e){st.textContent='● BŁĘDNY ADRES';return}
+  const to=setTimeout(()=>{try{ws.close()}catch(e){}st.textContent='● BRAK ODPOWIEDZI (darmowy serwer może się budzić ok. minuty – spróbuj ponownie)'},20000);
+  ws.onopen=()=>{clearTimeout(to);st.textContent='● SERWER ODPOWIADA – GRA ONLINE W PRZYGOTOWANIU';ws.close()};
+  ws.onerror=()=>{clearTimeout(to);st.textContent='● BŁĄD POŁĄCZENIA'};
+};
+
+/* postać gracza w menu (zblurowana twarz, broń w rękach) */
+(function(){
+  const cv=$('menuChar');
+  const r2=new THREE.WebGLRenderer({canvas:cv,alpha:true,antialias:true});
+  r2.setPixelRatio(Math.min(devicePixelRatio||1,2));r2.setClearColor(0x000000,0);r2.outputEncoding=THREE.sRGBEncoding;
+  const sc=new THREE.Scene(),cm2=new THREE.PerspectiveCamera(32,1,.1,50);
+  cm2.position.set(0,1.0,4.7);cm2.lookAt(0,.95,0);
+  function fit(){const w=cv.clientWidth||1,h=cv.clientHeight||1;r2.setSize(w,h,false);cm2.aspect=w/h;cm2.updateProjectionMatrix()}
+  addEventListener('resize',fit);fit();
+  sc.add(new THREE.HemisphereLight(0x9fb0c8,0x1a1410,.95));
+  const key=new THREE.DirectionalLight(0xdfe8ff,1.3);key.position.set(-2.5,2.5,3.5);sc.add(key);
+  const rim=new THREE.DirectionalLight(0xff3030,1.7);rim.position.set(3,2,-3);sc.add(rim);
+  const M=c=>new THREE.MeshStandardMaterial({color:c,roughness:.85,metalness:.05});
+  const cmo=camo(0),vest=M(0x23262a),glove=M(0x15161a),boot=M(0x1b1815),skinM=M(0xc68e6b),helm=M(0x3d4436),dark=M(0x111214);
+  const sol=new THREE.Group();sc.add(sol);
+  const add=(g,m,x,y,z)=>{const e=new THREE.Mesh(g,m);e.position.set(x,y,z);sol.add(e);return e};
+  const CY=THREE.CylinderGeometry,SP=THREE.SphereGeometry,BO=THREE.BoxGeometry;
+  // cień pod postacią
+  {const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),g=x.createRadialGradient(64,64,0,64,64,64);
+   g.addColorStop(0,'rgba(0,0,0,.65)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,128,128);
+   const m=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.6),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false}));
+   m.rotation.x=-Math.PI/2;m.position.y=.005;sc.add(m)}
+  // nogi i buty
+  [-.11,.11].forEach(x=>{add(new CY(.1,.075,.85,12),cmo,x,.47,0);add(new BO(.12,.1,.28),boot,x,.06,.05);add(new CY(.075,.085,.2,10),boot,x,.17,0)});
+  add(new CY(.2,.21,.26,16),cmo,0,.95,0).scale.z=.7;
+  // tors, kamizelka
+  add(new CY(.235,.2,.62,16),cmo,0,1.28,0).scale.z=.66;
+  add(new CY(.255,.225,.5,16),vest,0,1.27,0).scale.z=.74;
+  [-.13,0,.13].forEach(x=>add(new BO(.1,.14,.07),vest,x,1.1,.19));
+  add(new BO(.34,.34,.06),vest,0,1.3,.18);
+  // szyja, głowa, hełm
+  add(new CY(.07,.085,.12,12),skinM,0,1.62,0);
+  add(new SP(.115,24,18),skinM,0,1.74,0).scale.set(.92,1.1,1);
+  add(new SP(.16,20,14,0,6.283,0,1.6),helm,0,1.78,-.005).scale.set(1,.95,1.12);
+  add(new BO(.05,.07,.06),dark,0,1.88,.14);
+  // ZBLUROWANA (spikselowana) TWARZ
+  {const c=document.createElement('canvas');c.width=7;c.height=8;const x=c.getContext('2d');
+   for(let j=0;j<8;j++)for(let i=0;i<7;i++){const v=110+R()*80;x.fillStyle='rgb('+(v+30|0)+','+(v-5|0)+','+(v-35|0)+')';x.fillRect(i,j,1,1)}
+   const t=new THREE.CanvasTexture(c);t.magFilter=t.minFilter=THREE.NearestFilter;
+   add(new THREE.PlaneGeometry(.185,.21),new THREE.MeshBasicMaterial({map:t,color:0xcccccc}),0,1.725,.127)}
+  [-.3,.3].forEach(x=>add(new SP(.085,12,10),cmo,x,1.5,0));
+  // broń (te same materiały co w grze – kolor z menu Weapons widać od razu)
+  const rifle=grp(
+    bx(.042,.072,.165,0,-.022,-.02,pol),
+    bx(.044,.06,.27,0,.032,-.105,stlTex),
+    bx(.025,.011,.31,0,.068,-.135,stlTex),
+    cy(.029,.27,0,.026,-.35,fde),
+    cy(.0085,.125,0,.028,-.545,stl),
+    cy(.0125,.042,0,.028,-.62,stl),
+    bx(.006,.022,.008,-.009,.087,-.06,stl),bx(.006,.022,.008,.009,.087,-.06,stl),
+    bx(.012,.03,.02,0,.045,-.49,stl),bx(.004,.04,.004,0,.072,-.49,dot),
+    rtx(bx(.035,.105,.042,0,-.093,.052,fde),.3),
+    bx(.021,.005,.062,0,-.06,-.032,pol),
+    cy(.017,.19,0,0,.175,stl),
+    bx(.042,.078,.105,0,-.012,.255,fde),
+    rtx(bx(.03,.135,.062,0,-.103,-.078,stlTex),.12),
+    bx(.024,.015,.032,0,.072,.046,pol)
+  );
+  rifle.position.set(.03,1.25,.2);rifle.rotation.set(.15,Math.PI,0);sol.add(rifle);
+  // ręce (proste IK dwóch kości) trzymają chwyt i łoże
+  function ik(S,T,l1,l2,pole){
+    const d0=T.clone().sub(S),d=Math.min(d0.length(),l1+l2-.002),dir=d0.normalize();
+    const a=(l1*l1-l2*l2+d*d)/(2*d),h=Math.sqrt(Math.max(0,l1*l1-a*a));
+    const pp=pole.clone().sub(dir.clone().multiplyScalar(pole.dot(dir))).normalize();
+    return S.clone().addScaledVector(dir,a).addScaledVector(pp,h);
+  }
+  function limb(a,b,r1,r2,m){
+    const d=b.clone().sub(a),L=d.length(),e=new THREE.Mesh(new CY(r2,r1,L,10),m);
+    e.position.copy(a).add(b).multiplyScalar(.5);e.quaternion.setFromUnitVectors(V(0,1,0),d.normalize());sol.add(e);
+  }
+  [[V(-.3,1.5,0),V(.03,1.17,.14),V(-.5,-1,-.2)],[V(.3,1.5,0),V(.03,1.22,.52),V(.5,-1,-.2)]].forEach(a=>{
+    const el=ik(a[0],a[1],.34,.34,a[2]);
+    limb(a[0],el,.075,.062,cmo);limb(el,a[1],.062,.048,cmo);
+    sol.add(Object.assign(new THREE.Mesh(new SP(.055,10,8),glove),{position:a[1].clone()}));
+    sol.add(Object.assign(new THREE.Mesh(new SP(.07,10,8),cmo),{position:el.clone()}));
+  });
+  sol.position.y=0;
+  let mx=0;
+  $('mainMenu').addEventListener('mousemove',e=>{mx=e.clientX/innerWidth-.5});
+  function mloop(now){
+    requestAnimationFrame(mloop);
+    if($('mainMenu').classList.contains('hidden'))return;
+    const t=now*.001;
+    sol.rotation.y=-.55+Math.sin(t*.4)*.06+mx*.5;
+    sol.position.y=Math.sin(t*1.6)*.006;
+    rifle.rotation.x=.15+Math.sin(t*1.6)*.01;
+    r2.render(sc,cm2);
+  }
+  requestAnimationFrame(mloop);
+})();
+
+$('mSingle').onclick=()=>{
   $('mainMenu').classList.add('hidden');
   resize();
   initAudio();
@@ -1240,6 +1470,7 @@ addEventListener('mousedown',e=>{if(!locked||dead||cut.active)return;if(e.button
 addEventListener('mouseup',e=>{if(e.button===0)down=false;if(e.button===2)adsOn=false});
 addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('keydown',e=>{
+  if(e.target&&e.target.tagName==='INPUT')return;
   if(locked)e.preventDefault();K[e.code]=true;
   if(menuN&&/^Digit[123]$/.test(e.code)){menuAct(e.code.slice(5));return}
   if(e.code==='Digit1')sw(1);if(e.code==='Digit2')sw(2);if(e.code==='Digit3')sw(3);
@@ -1374,7 +1605,7 @@ function loop(now){
     $('fps').textContent=Math.round(fc/ft)+' FPS';fc=0;ft=0;
     const d=new Date(),p=(n,l=2)=>String(n).padStart(l,'0');
     $('tc').textContent=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+':'+p(Math.floor(d.getMilliseconds()/1000*30));
-    $('cnt').textContent='WROGOWIE: '+npcs.filter(n=>!n.dead).length+' | ZABICI: '+kills+' [G | X]';
+    $('cnt').textContent='WROGOWIE: '+npcs.filter(n=>!n.dead).length+' | ZABICI: '+kills+' | PKT: '+pts+' [G | X]';
   }
 }
 function initSpawn(){for(let i=0;i<18;i++){let x,z;do{x=-44+R()*88;z=-44+R()*80}while(Math.hypot(x,z)<22||inHall(x,z)||(x>-46&&x<-9&&z>-46&&z<-7));spawn(x,z)}
