@@ -55,6 +55,15 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #deadContent{display:none;flex-direction:column;align-items:center;justify-content:center;z-index:2;text-align:center}
 #deadContent h2{color:#dc2626;letter-spacing:6px;font-size:30px;margin:0 0 10px;text-shadow:0 0 15px red;}
 #deadContent p{color:var(--dim);letter-spacing:2px;margin-bottom:20px}
+/* CUTSCENKA EGZEKUCJI */
+#bars .b{position:absolute;left:0;right:0;height:0;background:#000;z-index:28;transition:height .6s ease;pointer-events:none}
+#bars .b.t{top:0}#bars .b.bt{bottom:0}#bars.on .b{height:9vh}
+#redwipe{position:absolute;inset:0;z-index:30;pointer-events:none;display:none;overflow:hidden}
+#rblood{position:absolute;inset:0;--w:-6%;
+ background:radial-gradient(ellipse at 28% 38%,rgba(55,0,2,.95) 0,rgba(55,0,2,0) 38%),radial-gradient(ellipse at 72% 62%,rgba(80,0,3,.95) 0,rgba(80,0,3,0) 42%),radial-gradient(ellipse at 50% 15%,rgba(70,0,3,.9) 0,rgba(70,0,3,0) 30%),linear-gradient(rgba(128,5,9,.94),rgba(98,2,6,.96));
+ -webkit-mask-image:linear-gradient(270deg,transparent var(--w),#000 calc(var(--w) + 4%));
+ mask-image:linear-gradient(270deg,transparent var(--w),#000 calc(var(--w) + 4%))}
+#rhand{position:absolute;height:56vh;width:119vh;top:50%;left:100%;opacity:0;transform:translate(0,-50%);filter:drop-shadow(0 8px 12px rgba(0,0,0,.65))}
 </style></head><body>
 <div id="box">
 <div id="mainMenu">
@@ -77,6 +86,18 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 <button class="sb" data-a="2" style="border-left:3px solid #f59e0b">[2] NA KOLANA</button>
 <button class="sb" data-a="3" style="border-left:3px solid #dc2626">[3] ZASTRZEL</button></div>
 
+<div id="bars"><div class="b t"></div><div class="b bt"></div></div>
+<div id="redwipe"><div id="rblood"></div>
+<svg id="rhand" viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg">
+ <rect x="340" y="85" width="300" height="130" fill="#4b5240"/><rect x="340" y="85" width="300" height="12" fill="#3b4130"/>
+ <rect x="180" y="75" width="190" height="150" rx="42" fill="#1c1e22" stroke="#2e3136" stroke-width="4"/>
+ <rect x="30" y="80" width="170" height="36" rx="18" fill="#1c1e22" stroke="#2e3136" stroke-width="3"/>
+ <rect x="14" y="118" width="186" height="36" rx="18" fill="#1c1e22" stroke="#2e3136" stroke-width="3"/>
+ <rect x="26" y="156" width="174" height="36" rx="18" fill="#1c1e22" stroke="#2e3136" stroke-width="3"/>
+ <rect x="62" y="194" width="140" height="34" rx="17" fill="#1c1e22" stroke="#2e3136" stroke-width="3"/>
+ <rect x="190" y="22" width="120" height="38" rx="19" fill="#1c1e22" stroke="#2e3136" stroke-width="3" transform="rotate(-18 250 41)"/>
+ <ellipse cx="120" cy="100" rx="60" ry="14" fill="rgba(110,0,5,.7)"/><ellipse cx="250" cy="150" rx="55" ry="40" fill="rgba(100,0,5,.65)"/><ellipse cx="90" cy="175" rx="50" ry="12" fill="rgba(110,0,5,.7)"/>
+</svg></div>
 <div id="modal" class="off"><div class="card"><h1>● BODYCAM SANDBOX // PAUZA</h1>
 <div class="row"><span>Czułość myszy</span><input id="sens" type="range" min=".3" max="2.5" step=".1" value="1"></div>
 <button id="go" class="go">WZNÓW GRĘ</button></div></div>
@@ -410,19 +431,19 @@ function los(a,b){const d=b.clone().sub(a),L=d.length();rc.set(a,d.normalize());
 /* AUDIO */
 let ac,master,menuMusic,menuMusicGain;
 const audioLoader=new THREE.AudioLoader();
-const AUDIO_SAMPLES={ pain:[], ak:[], pistol:[], shot:[], mag:[], pump:[] };
+const AUDIO_SAMPLES={ pain:[], ak:[], pistol:[], shot:[], mag:[], pump:[], beg:[] };
 const audioBuffers={},audioTrim={},lastSrc={};
 /* Ręczna korekta (sekundy) – wartość DODATNIA ucina jeszcze więcej początku próbki,
    np. ak:0.15 = dźwięk AK startuje o 0.15 s wcześniej. Cisza na początku jest i tak
    wycinana automatycznie. */
-const SOUND_SKIP={ak:0,pistol:0,shot:0,mag:0,pump:0,pain:0};
-function silenceEnd(buf){
+const SOUND_SKIP={ak:0,pistol:0,shot:0,mag:0,pump:0,pain:0,beg:0};
+function silenceEnd(buf,frac=.15){
   // szukamy pierwszego PRAWDZIWEGO huku: próg = 15% najgłośniejszego szczytu pliku (ignoruje ciche szumy/cichy wstęp)
   const n=buf.length,sr=buf.sampleRate,ch=[];
   for(let c=0;c<buf.numberOfChannels;c++)ch.push(buf.getChannelData(c));
   let peak=0;
   for(let i=0;i<n;i++)for(let c=0;c<ch.length;c++){const v=Math.abs(ch[c][i]);if(v>peak)peak=v}
-  const th=Math.max(.02,peak*.15);
+  const th=Math.max(frac<.1?.008:.02,peak*frac);
   for(let i=0;i<n;i++)for(let c=0;c<ch.length;c++){
     if(Math.abs(ch[c][i])>th)return Math.max(0,i/sr-.012);
   }
@@ -448,14 +469,15 @@ const AUDIO_FILES={
   pistol:['freesound_community-perdition-1911-pistol-82365.mp3'],
   shot:['ElevenLabs__Gun_Shot.mp3'],
   mag:['ElevenLabs_Gun_magazine_load.mp3'],
-  pump:['ElevenLabs_Pump_shotgun_racked_back__heavy_steel_pump_slide,_close-miked,_dry.mp3']
+  pump:['ElevenLabs_Pump_shotgun_racked_back__heavy_steel_pump_slide,_close-miked,_dry.mp3'],
+  beg:["Voicy_Don't shoot me! Please! Please! Don't shoot me!...mp3"]
 };
 function loadAudios(){
   for(const cat in AUDIO_FILES){
     AUDIO_FILES[cat].forEach(file=>{
-      audioLoader.load(file,buffer=>{
+      audioLoader.load(encodeURI(file),buffer=>{
         audioBuffers[file]=buffer;
-        audioTrim[file]=Math.max(0,silenceEnd(buffer)+(SOUND_SKIP[cat]||0));console.log('trim',file,audioTrim[file].toFixed(3)+'s z '+buffer.duration.toFixed(2)+'s');
+        audioTrim[file]=Math.max(0,silenceEnd(buffer,cat==='beg'?.03:.15)+(SOUND_SKIP[cat]||0));console.log('trim',file,audioTrim[file].toFixed(3)+'s z '+buffer.duration.toFixed(2)+'s');
         AUDIO_SAMPLES[cat].push(file);
       },undefined,err=>console.warn('Błąd audio (może plik nie istnieje):',file));
     });
@@ -801,6 +823,70 @@ function updNPC(n,dt){
 const P=V(30,1.6,-40),K={};
 let yaw=Math.PI,pitch=0,hp=100,dead=false,locked=false,down=false,ads=0,adsOn=false,crouchAmt=0,bob=0,roll=0,sens=1,hurtCd=0,recoil=0,slot=1,cd=0,reloading=0,flashT=0,shake=0,menuN=null,fb=false;
 let flashOn=false,battery=94,batT=0,dark=0,pumpDone=false;
+const cut={active:false,n:null,t:0,T:9,phase:0,t2:0,d0:4,dir:V(0,0,1),src:null};
+const BEG_SHOT_OFFSET=0; // sekundy względem końca nagrania: ujemne = strzał wcześniej, dodatnie = później
+const sb1=document.querySelector('.sb[data-a="1"]'),sb2=document.querySelector('.sb[data-a="2"]');
+function playBeg(){
+  if(!ac||!AUDIO_SAMPLES.beg.length)return 0;
+  const f=AUDIO_SAMPLES.beg[0],buf=audioBuffers[f];if(!buf)return 0;
+  if(ac.state==='suspended')ac.resume();
+  const s=ac.createBufferSource();s.buffer=buf;const g=ac.createGain();g.gain.value=1.1;
+  s.connect(g).connect(master);const off=audioTrim[f]||0;s.start(0,off);cut.src=s;
+  return buf.duration-off;
+}
+function startExec(n){
+  if(cut.active||dead)return;
+  cut.active=true;cut.n=n;cut.t=0;cut.phase=0;cut.t2=0;
+  n.state='kneel';n.hands=Math.max(n.hands,.5);
+  adsOn=false;down=false;
+  const dx=P.x-n.g.position.x,dz=P.z-n.g.position.z,L=Math.hypot(dx,dz)||1;
+  cut.dir.set(dx/L,0,dz/L);cut.d0=L;
+  const dur=playBeg();cut.T=Math.max(3,Math.min(20,(dur||9)+BEG_SHOT_OFFSET));
+  $('bars').classList.add('on');$('menu').classList.remove('on');menuN=null;
+}
+function wipeSet(w,p){
+  $('rblood').style.setProperty('--w',w+'%');
+  const h=$('rhand');h.style.opacity=(p>0&&p<1)?1:0;h.style.left=(100-w)+'%';
+  h.style.top=(50+Math.sin(p*14)*9)+'%';
+  h.style.transform='translate(0,-50%) rotate('+(Math.sin(p*14+1)*5)+'deg)';
+}
+function cutShoot(){
+  const n=cut.n;cut.phase=1;cut.t2=0;
+  try{if(cut.src)cut.src.stop()}catch(e){}
+  n.head.getWorldPosition(tmp);
+  const pt=tmp.clone(),d=pt.clone().sub(cam.position).normalize(),w=W[slot];
+  recoil+=w.kick;shake=.05;U.flash.value=.9;mzl.position.set(0,.02,w.mz);mzl.intensity=8;flashT=.06;
+  if(!playWeaponSound(slot))nz(.4,.6);
+  hitNPC(n,'head',pt,d,100);
+  U.blood.value=1;log('WRÓG #'+n.i+' ZASTRZELONY');
+  const r=$('redwipe');r.style.display='block';r.style.opacity=1;wipeSet(-6,0);
+}
+function endCut(){
+  cut.active=false;cut.n=null;adsOn=false;
+  $('bars').classList.remove('on');$('redwipe').style.display='none';
+  U.blood.value=Math.max(U.blood.value,.55);
+}
+function cutUpdate(dt){
+  const n=cut.n;if(!n){cut.active=false;return}
+  stress=Math.max(stress,.7);
+  if(cut.phase===0){
+    cut.t+=dt;shake=Math.max(shake,.006);
+    const u=Math.min(1,cut.t/cut.T),e=u*u*(3-2*u),dEnd=Math.min(1.0,cut.d0),dist=cut.d0+(dEnd-cut.d0)*e;
+    P.x=n.g.position.x+cut.dir.x*dist;P.z=n.g.position.z+cut.dir.z*dist;collide(P,.4);
+    n.head.getWorldPosition(tmp);
+    const dx=tmp.x-P.x,dz=tmp.z-P.z,hl=Math.hypot(dx,dz)||1;
+    const ty=Math.atan2(-dx,-dz),tp=Math.atan2(tmp.y-cam.position.y,hl);
+    yaw+=wrap(ty-yaw)*Math.min(1,dt*4);pitch+=(tp-pitch)*Math.min(1,dt*4);
+    adsOn=cut.t>1.0;
+    if(cut.t>=cut.T)cutShoot();
+  } else {
+    cut.t2+=dt;const hold=1.4,wd=2.6;
+    if(cut.t2<hold){wipeSet(-6,0)}
+    else if(cut.t2<hold+wd){const p=(cut.t2-hold)/wd;wipeSet(-6+p*112,p)}
+    else if(cut.t2<hold+wd+.4){$('rhand').style.opacity=0;$('redwipe').style.opacity=1-(cut.t2-hold-wd)/.4}
+    else endCut();
+  }
+}
 const W={1:{n:'P320 TACTICAL 9MM',mag:15,ammo:15,rate:.16,dmg:34,sp:.008,rl:1.35,pel:1,kick:.045,auto:false,mz:-.16},
 2:{n:'AK-74 5.45MM',mag:30,ammo:30,rate:.095,dmg:26,sp:.011,rl:1.75,pel:1,kick:.05,auto:true,mz:-.62},
 3:{n:'M870 BREACHER 12GA',mag:6,ammo:6,rate:.65,dmg:16,sp:.058,rl:2,pel:8,kick:.14,auto:false,mz:-.62}};
@@ -959,8 +1045,8 @@ const laserDot=new THREE.Mesh(new THREE.SphereGeometry(.018,6,6),new THREE.MeshB
 laserDot.visible=false;scene.add(laserDot);
 
 function hud(){const w=W[slot];$('wn').textContent=w.n;$('am').textContent=String(w.ammo).padStart(2,'0');$('mm').textContent='/ '+w.mag;$('rl').textContent=reloading>0?'PRZEŁADOWANIE':''}
-function sw(s){if(reloading>0||!W[s])return;slot=s;for(const k in VM)VM[k].visible=+k===s;tone(750,400,.05,.15,'square');hud()}
-function reload(){const w=W[slot];if(reloading>0||w.ammo===w.mag)return;reloading=w.rl;pumpDone=false;if(!playLocal('mag',1))tone(520,260,.05,.15,'square');hud()}
+function sw(s){if(reloading>0||!W[s]||cut.active)return;slot=s;for(const k in VM)VM[k].visible=+k===s;tone(750,400,.05,.15,'square');hud()}
+function reload(){const w=W[slot];if(reloading>0||w.ammo===w.mag||cut.active)return;reloading=w.rl;pumpDone=false;if(!playLocal('mag',1))tone(520,260,.05,.15,'square');hud()}
 
 // DŹWIĘKI BRONI (próbka z pliku, a jeśli jej brak – dźwięk syntetyczny)
 function playWeaponSound(type){
@@ -985,7 +1071,7 @@ function playWeaponSound(type){
 }
 
 function fire(){
-  const w=W[slot];if(reloading>0||cd>0||dead)return;
+  const w=W[slot];if(reloading>0||cd>0||dead||cut.active)return;
   if(w.ammo<=0){tone(1200,600,.04,.15,'square');reload();return}
   w.ammo--;cd=w.rate;recoil+=w.kick;pitch+=w.kick*.45;yaw+=(R()-.5)*.014;shake=.016;U.flash.value=.5;
   mzl.position.set(0,.02,w.mz);mzl.intensity=8;flashT=.045;
@@ -1026,7 +1112,7 @@ function log(t){const e=$('log');e.textContent='[OSD] '+t;e.style.opacity=1;clea
 
 let deathTimer=null;
 function hurtPlayer(a){
-  if(dead||hurtCd>0)return;hurtCd=.1;hp-=a;shake=.04;U.hurt.value=1;
+  if(dead||hurtCd>0||cut.active)return;hurtCd=.1;hp-=a;shake=.04;U.hurt.value=1;
   tone(80,40,.25,.4,'sawtooth');
   if(gcd<=0){groan(P,95+R()*25,.5+R()*.3);gcd=.7}
   stress=1;bloodV=Math.min(1,bloodV+.45+a*.03);
@@ -1046,13 +1132,14 @@ function hurtPlayer(a){
 function showDeadScreen(){clearTimeout(deathTimer);$('deadContent').style.display='flex'}
 
 function menuAct(a){
-  const n=menuN;if(!n)return;
-  if(a==='1'){n.armed=false;n.state='patrol';n.hands=0;n.kneel=0;log('WRÓG #'+n.i+' ROZBROJONY I ZWOLNIONY')}
-  else if(a==='2'){n.state='kneel';log('WRÓG #'+n.i+' NA KOLANACH')}
-  else{n.head.getWorldPosition(tmp);const d=tmp.clone().sub(cam.position).normalize();hitNPC(n,'head',tmp.clone(),d,100);log('WRÓG #'+n.i+' ZASTRZELONY')}
+  const n=menuN;if(!n||cut.active)return;
+  if(a==='1'){if(!n.armed)return;n.armed=false;n.state='kneel';log('WRÓG #'+n.i+' ROZBROJONY – ZOSTAJE NA KOLANACH')}
+  else if(a==='2'){if(n.state==='kneel')return;n.state='kneel';log('WRÓG #'+n.i+' NA KOLANACH')}
+  else{menuN=null;$('menu').classList.remove('on');startExec(n);return}
   menuN=null;$('menu').classList.remove('on');
 }
 function look(dt){
+  if(cut.active){if(menuN){menuN=null;$('menu').classList.remove('on')}return}
   rc.set(cam.position,V(0,0,-1).applyQuaternion(cam.quaternion));rc.far=100;
   const hn=rc.intersectObjects(allHit)[0],ho=rc.intersectObjects(obstM)[0];
   let t=null,d=0;
@@ -1071,6 +1158,7 @@ function look(dt){
     $('mt').textContent=m.state==='kneel'?'BŁAGA O LITOŚĆ':'WRÓG SIĘ PODDAJE';
     $('mx').textContent=m.state==='kneel'?'„Błagam… nie zabijaj mnie… Proszę…”':'„Poddaję się! Nie strzelaj!”';
   }
+  if(m){sb1.style.display=m.armed?'':'none';sb2.style.display=m.state==='kneel'?'none':''}
 }
 function spawn(x,z){
   if(npcs.length>=60){
@@ -1147,8 +1235,8 @@ document.addEventListener('pointerlockchange',()=>{
   else if(!dead&&$('mainMenu').classList.contains('hidden')){$('modal').classList.remove('off');down=false;adsOn=false}
 });
 document.addEventListener('pointerlockerror',()=>{initAudio();fb=true;locked=true;$('modal').classList.add('off');log('BRAK POINTER LOCK: obrót strzałkami')});
-addEventListener('mousemove',e=>{if(!locked)return;const s=.0019*sens*(adsOn?.58:1);yaw-=e.movementX*s;pitch=Math.max(-1.42,Math.min(1.42,pitch-e.movementY*s))});
-addEventListener('mousedown',e=>{if(!locked||dead)return;if(e.button===0){down=true;fire()}else if(e.button===2)adsOn=true});
+addEventListener('mousemove',e=>{if(!locked||cut.active)return;const s=.0019*sens*(adsOn?.58:1);yaw-=e.movementX*s;pitch=Math.max(-1.42,Math.min(1.42,pitch-e.movementY*s))});
+addEventListener('mousedown',e=>{if(!locked||dead||cut.active)return;if(e.button===0){down=true;fire()}else if(e.button===2)adsOn=true});
 addEventListener('mouseup',e=>{if(e.button===0)down=false;if(e.button===2)adsOn=false});
 addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('keydown',e=>{
@@ -1157,9 +1245,9 @@ addEventListener('keydown',e=>{
   if(e.code==='Digit1')sw(1);if(e.code==='Digit2')sw(2);if(e.code==='Digit3')sw(3);
   if(e.code==='KeyR')reload();
   if(e.code==='BracketRight')adjustSkip(.05);if(e.code==='BracketLeft')adjustSkip(-.05);
-  if(e.code==='Space'&&jy<=0)jv=4.4;
+  if(e.code==='Space'&&jy<=0&&!cut.active)jv=4.4;
   if(e.code==='KeyC'&&K.ShiftLeft&&K.KeyW&&slideT<=0)slideT=.7;
-  if(e.code==='KeyG')spawn();if(e.code==='KeyX')reset();
+  if(e.code==='KeyG')spawn();if(e.code==='KeyX'&&!cut.active)reset();
   if(e.code==='KeyF'&&locked){flashOn=!flashOn;flashlight.intensity=flashOn?2.5:0;tone(flashOn?900:600,flashOn?600:400,.03,.1,'square')}
 });
 addEventListener('keyup',e=>K[e.code]=false);
@@ -1179,9 +1267,10 @@ function loop(now){
       hurtCd-=dt;cd-=dt;
       yaw+=((K.ArrowLeft?1:0)-(K.ArrowRight?1:0))*dt*2;pitch=Math.max(-1.42,Math.min(1.42,pitch+((K.ArrowUp?1:0)-(K.ArrowDown?1:0))*dt*1.5));
       if(down&&W[slot].auto)fire();
+      if(cut.active)cutUpdate(dt);
       const fw=V(-Math.sin(yaw),0,-Math.cos(yaw)),rt2=V(Math.cos(yaw),0,-Math.sin(yaw)),md=V(0,0,0);
       if(K.KeyW)md.add(fw);if(K.KeyS)md.sub(fw);if(K.KeyD)md.add(rt2);if(K.KeyA)md.sub(rt2);
-      const crouch=K.KeyC,mv=md.lengthSq()>.001,spr=mv&&(K.ShiftLeft||K.ShiftRight)&&!adsOn&&!crouch;
+      const crouch=K.KeyC&&!cut.active,mv=!cut.active&&md.lengthSq()>.001,spr=mv&&(K.ShiftLeft||K.ShiftRight)&&!adsOn&&!crouch;
       let sp=spr?5.2:adsOn?1.85:3.1;if(crouch)sp*=.5;if(slideT>0){slideT-=dt;sp=3+7*(slideT/.7)}
       jv-=14*dt;jy+=jv*dt;if(jy<0){jy=0;jv=0}
       crouchAmt+=((crouch||slideT>0?1:0)-crouchAmt)*Math.min(1,dt*10);
