@@ -116,7 +116,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 
 <div id="ldr"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script>
@@ -1032,18 +1032,19 @@ function reskin(tpl,tex){
 }
 
 async function ensureLibs(){
-  const hosts=['https://cdn.jsdelivr.net/npm/three@0.128.0/','https://unpkg.com/three@0.128.0/'];
-  const lib=(ok,path)=>ok()?Promise.resolve():new Promise(res=>{
-    const t=i=>{if(i>=hosts.length)return res();const sc=document.createElement('script');sc.src=hosts[i]+path;sc.onload=res;sc.onerror=()=>t(i+1);document.head.appendChild(sc)};t(0)});
-  await lib(()=>typeof fflate!=='undefined','examples/js/libs/fflate.min.js');
-  await lib(()=>THREE.FBXLoader,'examples/js/loaders/FBXLoader.js');
-  await lib(()=>THREE.SkeletonUtils,'examples/js/utils/SkeletonUtils.js');
+  const T3=['https://cdn.jsdelivr.net/npm/three@0.128.0/','https://unpkg.com/three@0.128.0/'];
+  const lib=(ok,urls)=>ok()?Promise.resolve():new Promise(res=>{
+    const t=i=>{if(i>=urls.length)return res();const sc=document.createElement('script');sc.src=urls[i];sc.onload=res;sc.onerror=()=>t(i+1);document.head.appendChild(sc)};t(0)});
+  await lib(()=>typeof fflate!=='undefined',['https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.js','https://unpkg.com/fflate@0.7.4/umd/index.js']);
+  await lib(()=>THREE.FBXLoader,T3.map(h=>h+'examples/js/loaders/FBXLoader.js'));
+  await lib(()=>THREE.SkeletonUtils,T3.map(h=>h+'examples/js/utils/SkeletonUtils.js'));
+  if(typeof fflate==='undefined')throw new Error('nie załadowała się biblioteka fflate (CDN zablokowany?)');
   if(!THREE.FBXLoader||!THREE.SkeletonUtils)throw new Error('nie załadowały się biblioteki FBXLoader/SkeletonUtils (CDN zablokowany?)');
 }
 
 async function loadAssets(){
   const ov=$('ldr'),show=t=>{ov.style.display='block';ov.textContent=t},step=t=>{ASSETS.step=t};
-  show('ŁADOWANIE POSTACI SAS…');
+  show('ŁADOWANIE POSTACI SAS (v4)…');
   step('biblioteki');await ensureLibs();
   // 1) lista plików w repo (jeśli gra stoi na serwerze obok plików – pobieramy lokalnie, GitHub tylko awaryjnie)
   step('lista plików z GitHuba');
@@ -1057,7 +1058,7 @@ async function loadAssets(){
     const r=await fetch(u);if(!r.ok)throw new Error(name+' → HTTP '+r.status);return r;
   };
   const total=Object.keys(FBX_FILES).length+Object.keys(TEX_FILES).length;let done=0;
-  const tick=()=>{show('ŁADOWANIE POSTACI SAS… '+(++done)+'/'+total)};
+  const tick=()=>{show('ŁADOWANIE POSTACI SAS (v4)… '+(++done)+'/'+total)};
   const bufs={},tex={},missing=[];
   step('pobieranie plików');
   await Promise.all([
@@ -1801,5 +1802,5 @@ function loop(now){
 function initSpawn(){for(let i=0;i<18;i++){let x,z;do{x=-44+R()*88;z=-44+R()*80}while(Math.hypot(x,z)<22||inHall(x,z)||(x>-46&&x<-9&&z>-46&&z<-7));spawn(x,z)}
   [[-35,-18],[-20,-18],[-35,-34],[-22,-34]].forEach(c=>spawn(c[0],c[1]))}
 sw(1);requestAnimationFrame(loop);
-loadAssets().catch(e=>{const msg='NIE WCZYTANO MODELU SAS ['+(ASSETS.step||'?')+']: '+(e&&e.message||e)+' — używam starego przeciwnika (kliknij, aby ukryć)';console.error('[SAS]',msg,e);ASSETS.state='failed';const o=$('ldr');o.style.display='block';o.style.pointerEvents='auto';o.style.cursor='pointer';o.textContent=msg;o.onclick=()=>o.style.display='none'}).then(()=>initSpawn());
+loadAssets().catch(e=>{const msg='NIE WCZYTANO MODELU SAS v4 ['+(ASSETS.step||'?')+']: '+(e&&e.message||e)+' — używam starego przeciwnika (kliknij, aby ukryć)';console.error('[SAS]',msg,e);ASSETS.state='failed';const o=$('ldr');o.style.display='block';o.style.pointerEvents='auto';o.style.cursor='pointer';o.textContent=msg;o.onclick=()=>o.style.display='none'}).then(()=>initSpawn());
 </script></body></html>
