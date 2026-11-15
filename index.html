@@ -821,37 +821,38 @@ function setupMenu(){
 }
 setupMenu();
 
+// NAPRAWA CZARNEGO EKRANU: Natychmiastowe odświeżenie i start po kliknięciu
 $('startBtn').onclick=()=>{
-  $('mainMenu').classList.add('hidden');
+  $('mainMenu').classList.add('hidden'); // Ukrywa menu
+  resize(); // KLUCZOWE: ustawia wymiary renderera po zniknięciu menu
   
-  // KLUCZOWA POPRAWKA: Wymuszenie ponownego renderowania i rozmiaru po usunięciu menu
-  setTimeout(() => {
-    resize();
-    initAudio();
-    loadAudios();
-    
-    audioLoader.load('music_menu_staging_drone.mp3', buffer=>{
-      if(menuMusic){try{menuMusic.stop()}catch(e){}}
-      menuMusic=ac.createBufferSource();
-      menuMusic.buffer=buffer;
-      menuMusic.loop=true;
-      menuMusicGain=ac.createGain();
-      menuMusicGain.gain.value=0.4;
-      menuMusic.connect(menuMusicGain).connect(master);
-      menuMusic.start();
-      setTimeout(()=>{
-        if(menuMusicGain)menuMusicGain.gain.setTargetAtTime(0,ac.currentTime,0.5)
-      },3000);
-    });
-    
-    lock();
-  }, 50); // Krótkie opóźnienie na "przemalowanie" DOM
+  initAudio();
+  loadAudios();
+  
+  audioLoader.load('music_menu_staging_drone.mp3', buffer=>{
+    if(menuMusic){try{menuMusic.stop()}catch(e){}}
+    menuMusic=ac.createBufferSource();
+    menuMusic.buffer=buffer;
+    menuMusic.loop=true;
+    menuMusicGain=ac.createGain();
+    menuMusicGain.gain.value=0.4;
+    menuMusic.connect(menuMusicGain).connect(master);
+    menuMusic.start();
+    setTimeout(()=>{
+      if(menuMusicGain)menuMusicGain.gain.setTargetAtTime(0,ac.currentTime,0.5)
+    },3000);
+  });
+  
+  lock(); // Odpala Pointer Lock
 };
 
 /* INPUT */
 const lock=()=>{box.requestPointerLock&&box.requestPointerLock()};
 $('go').onclick=lock;
+
+// KLUCZOWA POPRAWKA: Pozwala kliknąć w ekran i wznowić grę po naciśnięciu ESC
 renderer.domElement.onclick=()=>{if(!locked&&!dead&&$('mainMenu').classList.contains('hidden'))lock()};
+
 document.addEventListener('pointerlockchange',()=>{
   locked=document.pointerLockElement===box;fb=false;
   if(locked)$('modal').classList.add('off');
