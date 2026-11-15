@@ -411,7 +411,20 @@ function los(a,b){const d=b.clone().sub(a),L=d.length();rc.set(a,d.normalize());
 let ac,master,menuMusic,menuMusicGain;
 const audioLoader=new THREE.AudioLoader();
 const AUDIO_SAMPLES={ pain:[], ak:[], pistol:[], shot:[], mag:[], pump:[] };
-const audioBuffers={};
+const audioBuffers={},audioTrim={},lastSrc={};
+/* Ręczna korekta (sekundy) – wartość DODATNIA ucina jeszcze więcej początku próbki,
+   np. ak:0.15 = dźwięk AK startuje o 0.15 s wcześniej. Cisza na początku jest i tak
+   wycinana automatycznie. */
+const SOUND_SKIP={ak:0,pistol:0,shot:0,mag:0,pump:0,pain:0};
+function silenceEnd(buf){
+  const th=0.02,n=buf.length,sr=buf.sampleRate;
+  for(let i=0;i<n;i++){
+    for(let c=0;c<buf.numberOfChannels;c++){
+      if(Math.abs(buf.getChannelData(c)[i])>th)return Math.max(0,i/sr-0.004);
+    }
+  }
+  return 0;
+}
 /* pliki dźwiękowe muszą leżeć obok pliku HTML */
 const AUDIO_FILES={
   pain:[
@@ -431,6 +444,7 @@ function loadAudios(){
     AUDIO_FILES[cat].forEach(file=>{
       audioLoader.load(file,buffer=>{
         audioBuffers[file]=buffer;
+        audioTrim[file]=Math.max(0,silenceEnd(buffer)+(SOUND_SKIP[cat]||0));
         AUDIO_SAMPLES[cat].push(file);
       },undefined,err=>console.warn('Błąd audio (może plik nie istnieje):',file));
     });
@@ -438,7 +452,7 @@ function loadAudios(){
 }
 function initAudio(){
   if(ac)return;
-  ac=new (window.AudioContext||window.webkitAudioContext)();
+  ac=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});if(ac.state==='suspended')ac.resume();
   master=ac.createDynamicsCompressor();
   master.threshold.value=-18;master.knee.value=6;master.ratio.value=12;
   master.attack.value=.003;master.release.value=.12;
@@ -468,17 +482,24 @@ function playSfx(cat, pt, vol=1, rate=1){
   const dist=pt?pt.distanceTo(cam.position):0;
   gain.gain.value=vol*Math.max(0,1-dist/60);
   src.connect(gain).connect(panner).connect(master);
-  src.start();
+  src.start(0,audioTrim[file]||0);
 }
 /* dźwięk lokalny (strzały gracza) – bez panner, bo listener stoi w 0,0,0 */
 function playLocal(cat,vol=1,rate=1){
   if(!ac)return false;
   const arr=AUDIO_SAMPLES[cat];if(!arr||!arr.length)return false;
-  const buf=audioBuffers[arr[R()*arr.length|0]];if(!buf)return false;
+  if(ac.state==='suspended')ac.resume();
+  const file=arr[R()*arr.length|0],buf=audioBuffers[file];if(!buf)return false;
   const s=ac.createBufferSource();s.buffer=buf;
-  s.playbackRate.value=rate*(.97+R()*.06);
+  s.playbackRate.value=rate*(cat==='ak'||cat==='pistol'||cat==='shot'?1:.97+R()*.06);
   const g=ac.createGain();g.gain.value=vol;
-  s.connect(g).connect(master);s.start();return true;
+  // poprzedni strzał tej samej broni urywamy krótkim fade-outem (bez nakładania się ogonów)
+  if(cat==='ak'||cat==='pistol'||cat==='shot'){
+    const o=lastSrc[cat];
+    if(o){try{o.g.gain.setTargetAtTime(0,ac.currentTime,.012);o.s.stop(ac.currentTime+.06)}catch(e){}}
+    lastSrc[cat]={s,g};
+  }
+  s.connect(g).connect(master);s.start(0,audioTrim[file]||0);return true;
 }
 /* listener podąża za kamerą – dzięki temu dźwięki wrogów lecą z ich pozycji, a nie z (0,0,0) */
 const _lf=V(0,0,-1),_lu=V(0,1,0);
@@ -931,9 +952,9 @@ function reload(){const w=W[slot];if(reloading>0||w.ammo===w.mag)return;reloadin
 function playWeaponSound(type){
   if(!ac)return;
   const t=ac.currentTime;
-  if(type===1&&playLocal('pistol',1))return;
-  if(type===2&&playLocal('ak',1))return;
-  if(type===3&&playLocal('shot',1.2))return;
+  if(type===1&&playLocal('pistol',1))return true;
+  if(type===2&&playLocal('ak',1))return true;
+  if(type===3&&playLocal('shot',1.2))return true;
   if(type===1){
     tone(300, 80, .12, .8, 'square');
     tone(150, 50, .2, .6, 'sawtooth');
@@ -955,8 +976,7 @@ function fire(){
   w.ammo--;cd=w.rate;recoil+=w.kick;pitch+=w.kick*.45;yaw+=(R()-.5)*.014;shake=.016;U.flash.value=.5;
   mzl.position.set(0,.02,w.mz);mzl.intensity=8;flashT=.045;
   
-  playWeaponSound(slot);
-  nz(.4,.6);
+  if(!playWeaponSound(slot))nz(.4,.6); // stary szum tylko gdy brak próbki
   
   scene.updateMatrixWorld(true);
   const rayTargets=allHit.concat(obstM);
