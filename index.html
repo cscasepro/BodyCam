@@ -27,8 +27,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #menu{position:absolute;left:50%;bottom:calc(120px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:rgba(10,10,15,.93);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:14px 22px;z-index:25;display:none;flex-direction:column;gap:8px;align-items:center;text-align:center}
 #menu.on{display:flex}#menu h3{margin:0;color:var(--amb);letter-spacing:3px;font-size:12px}#menu p{margin:0 0 4px;font-style:italic;color:#d1d5db}
 .sb{min-width:250px;padding:9px 14px;background:rgba(60,60,70,.7);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:4px;font:inherit;letter-spacing:2px}
-#dead,#modal{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:40;text-align:center}
-#dead{background:rgba(40,0,0,.92)}#dead.on{display:flex}#dead h2{color:#dc2626;letter-spacing:6px;font-size:26px;margin:0 0 10px}
+#dead{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:40;text-align:center;background:rgba(40,0,0,.92)}#dead.on{display:flex}#dead h2{color:#dc2626;letter-spacing:6px;font-size:26px;margin:0 0 10px}
 .card{background:rgba(20,20,24,.96);border:1px solid #3f3f46;border-radius:12px;padding:22px;max-width:420px;width:92%;text-align:left}
 .card h1{font-size:14px;letter-spacing:3px;margin:0 0 10px}.card p{font:12px/1.5 system-ui,sans-serif;color:#d4d4d8;margin:0 0 12px}
 .go{width:100%;padding:12px;background:#059669;color:#fff;border:0;border-radius:8px;font:bold 12px ui-monospace,monospace;letter-spacing:2px;cursor:pointer}
@@ -46,6 +45,15 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #startBtn:hover{background:#ef4444;box-shadow:0 0 50px rgba(220,38,38,1);transform:scale(1.05)}
 #mainMenu.hidden{display:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* NOWY EKRAN ŚMIERCI (LOST SIGNAL) */
+#lostSignalScreen{position:fixed;inset:0;background:#000;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;}
+#lostSignalScreen.on{display:flex;pointer-events:all;}
+#lostVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.85;filter:contrast(1.2) grayscale(0.2);}
+#lostSignalScreen .overlay{position:absolute;inset:0;background:rgba(0,0,0,0.6);box-shadow:inset 0 0 100px rgba(0,0,0,1);z-index:1}
+#deadContent{display:none;flex-direction:column;align-items:center;justify-content:center;z-index:2;text-align:center}
+#deadContent h2{color:#dc2626;letter-spacing:6px;font-size:30px;margin:0 0 10px;text-shadow:0 0 15px red;}
+#deadContent p{color:var(--dim);letter-spacing:2px;margin-bottom:20px}
 </style></head><body>
 <div id="box">
 <div id="mainMenu">
@@ -67,11 +75,23 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 <button class="sb" data-a="1" style="border-left:3px solid #3b82f6">[1] ROZBRÓJ</button>
 <button class="sb" data-a="2" style="border-left:3px solid #f59e0b">[2] NA KOLANA</button>
 <button class="sb" data-a="3" style="border-left:3px solid #dc2626">[3] ZASTRZEL</button></div>
-<div id="dead"><h2>OFFICER DOWN</h2><p style="color:var(--dim)">BODYCAM FEED TERMINATED</p><button id="rs" class="go" style="width:auto;padding:12px 32px;background:#dc2626">RESPAWN</button></div>
+
 <div id="modal" class="off"><div class="card"><h1>● BODYCAM SANDBOX // PAUZA</h1>
 <div class="row"><span>Czułość myszy</span><input id="sens" type="range" min=".3" max="2.5" step=".1" value="1"></div>
 <button id="go" class="go">WZNÓW GRĘ</button></div></div>
 </div>
+
+<!-- EKRAN ŚMIERCI Z WIDEO -->
+<div id="lostSignalScreen">
+  <video id="lostVideo" src="4010045651-preview.mp4" muted playsinline></video>
+  <div class="overlay"></div>
+  <div id="deadContent">
+    <h2>OFFICER DOWN</h2>
+    <p>BODYCAM FEED TERMINATED</p>
+    <button id="rs" class="go" style="width:auto;padding:12px 32px;background:#dc2626">RESPAWN</button>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),R=Math.random,V=(x,y,z)=>new THREE.Vector3(x,y,z);
@@ -406,11 +426,10 @@ function decal(x,z,r){if(decals.length>90)scene.remove(decals.shift());
 const m=new THREE.Mesh(decG,new THREE.MeshBasicMaterial({color:0x4a0205,transparent:true,opacity:.7+R()*.25,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));
 m.rotation.x=-Math.PI/2;m.position.set(x,.015,z);m.scale.setScalar(r*(.7+R()*.9));scene.add(m);decals.push(m)}
 
-// NOWOŚĆ: Dekal krwi na ścianie
 function decalWall(pt, n, r){if(decals.length>90)scene.remove(decals.shift());
   const m=new THREE.Mesh(decG,new THREE.MeshBasicMaterial({color:0x4a0205,transparent:true,opacity:.7+R()*.25,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));
   m.position.copy(pt).addScaledVector(n,0.01);
-  m.lookAt(pt.clone().add(n)); // Orientuje płaszczyznę deklu do ściany
+  m.lookAt(pt.clone().add(n));
   m.scale.setScalar(r*(.7+R()*.9));
   scene.add(m);decals.push(m);
 }
@@ -421,16 +440,13 @@ const v=dir.clone().multiplyScalar(1.5+R()*4*k);v.x+=(R()-.5)*3*k;v.y+=R()*3*k+.
 function drip(pt){const m=new THREE.Mesh(dropG,dropM);m.position.copy(pt);scene.add(m);parts.push({m,v:V((R()-.5)*.3,-.5,(R()-.5)*.3),life:3,r:.04+R()*.06})}
 function hole(pt,n){if(holes.length>70)scene.remove(holes.shift());const m=new THREE.Mesh(holeG,holeM);m.position.copy(pt).addScaledVector(n,.01);m.lookAt(pt.clone().add(n));scene.add(m);holes.push(m)}
 
-// NOWOŚĆ: Cząsteczki krwi sprawdzają kolizję ze ścianami, tworząc plamy w pionie
 function updParts(dt){for(let i=parts.length-1;i>=0;i--){
   const p=parts[i];p.life-=dt;p.v.y-=9.81*dt;p.m.position.addScaledVector(p.v,dt);
   
-  // Sprawdź czy krew uderza w ścianę (uproszczona wersja)
   let hitWall = false;
   for(const o of obst){
     if(Math.abs(p.m.position.x-o.x) < o.w/2 + 0.05 && Math.abs(p.m.position.z-o.z) < o.d/2 + 0.05){
-      if(p.m.position.y > 0 && p.m.position.y < 3.5){ // Krew na ścianie
-        // Znajdź wektor normalny do najbliższej ściany (uproszczone, wystarczające dla prostopadłościanów)
+      if(p.m.position.y > 0 && p.m.position.y < 3.5){ 
         const dx = p.m.position.x-o.x, dz = p.m.position.z-o.z;
         let n = V(0,0,0);
         if(Math.abs(dx) > Math.abs(dz)) n.x = Math.sign(dx);
@@ -495,10 +511,8 @@ function mkNPC(x,z){
 }
 const wrap=a=>{while(a>Math.PI)a-=6.283;while(a<-Math.PI)a+=6.283;return a};
 
-// NOWOŚĆ: Realistyczne odrzucenie trupa z kolizją ze ścianami
 function kill(n,dir){
   n.dead=true;kills++;n.gun.visible=false;
-  // Uderzenie od kuli nadaje pęd
   n.vel.copy(dir).multiplyScalar(3.5); n.vel.y = 0; 
   
   const f=Math.sin(n.yaw)*dir.x+Math.cos(n.yaw)*dir.z,s=Math.cos(n.yaw)*dir.x-Math.sin(n.yaw)*dir.z,t=Math.abs(f)>.45?0:1;
@@ -533,11 +547,9 @@ function updNPC(n,dt){
     g.rotation.x=n.tx*e;g.rotation.z=n.tz*e;g.rotation.y+=n.spin*dt*(1-n.fall);
     g.position.y=(n.tz?.22:.16)*e;
     
-    // NOWOŚĆ: Trup ślizga się po podłodze i odbija od ścian
     n.vel.multiplyScalar(Math.max(0,1-dt*4));
     g.position.addScaledVector(n.vel,dt);
     
-    // Kolizja ze ścianami dla trupa
     for(const o of obst){
       const dx = g.position.x - o.x, dz = g.position.z - o.z;
       const hx = o.w/2 + 0.4, hz = o.d/2 + 0.4;
@@ -560,7 +572,6 @@ function updNPC(n,dt){
     return;
   }
   
-  // ... reszta kodu AI bez zmian ...
   const to=P.clone().sub(g.position);to.y=0;const dist=to.length(),k=Math.min(1,dt*10);
   let moving=0,aimPose=false;
   const fwd=V(Math.sin(n.yaw),0,Math.cos(n.yaw)),right=V(Math.cos(n.yaw),0,-Math.sin(n.yaw)),dn=to.clone().normalize();
@@ -769,14 +780,13 @@ function fire(){
   w.ammo--;cd=w.rate;recoil+=w.kick;pitch+=w.kick*.45;yaw+=(R()-.5)*.014;shake=.016;U.flash.value=.5;
   mzl.position.set(0,.02,w.mz);mzl.intensity=6;flashT=.045;
   
-  // NATYCHMIASTOWY DŹWIĘK (rozwiązuje problem opóźnienia)
   tone(slot===1?180:140, 40, .15, .6, 'square');
   
   if(slot===1) playSfx('gun_pistol', cam.position.clone(), 1.5, 1); 
   else if(slot===2) playSfx('gun_rifle', cam.position.clone(), 1.2, 1); 
   
   nz(.4,.6);
-  scene.updateMatrixWorld(); // KLUCZOWA POPRAWKA: Aktualizacja macierzy przed raycastem
+  scene.updateMatrixWorld();
   
   const rayTargets = allHit.concat(obstM);
   
@@ -808,14 +818,47 @@ function fire(){
   hud();
 }
 function log(t){const e=$('log');e.textContent='[OSD] '+t;e.style.opacity=1;clearTimeout(log.t);log.t=setTimeout(()=>e.style.opacity=0,2500)}
+
+let deathTimer = null;
+
 function hurtPlayer(a){
   if(dead||hurtCd>0)return;hurtCd=.1;hp-=a;shake=.04;U.hurt.value=1;
   tone(80,40,.25,.4,'sawtooth');
   if(gcd<=0){groan(P,95+R()*25,.5+R()*.3);gcd=.7}
   stress=1;bloodV=Math.min(1,bloodV+.45+a*.03);
   $('hpf').style.width=Math.max(0,hp)+'%';
-  if(hp<=0){dead=true;$('dead').classList.add('on');$('menu').classList.remove('on');if(document.pointerLockElement)document.exitPointerLock()}
+  if(hp<=0){
+    dead=true;$('menu').classList.remove('on');if(document.pointerLockElement)document.exitPointerLock();
+    
+    // ODPALANIE WIDEO
+    const lostScreen = $('lostSignalScreen');
+    const video = $('lostVideo');
+    const deadContent = $('deadContent');
+    
+    lostScreen.classList.add('on');
+    deadContent.style.display = 'none';
+    video.currentTime = 0;
+    
+    // Próba odtworzenia wideo
+    video.play().catch(e => {
+      console.log("Brak autoplay wideo lub plik nie znaleziony, pokazuję ekran od razu.");
+      showDeadScreen();
+    });
+
+    // Po zakończeniu wideo pokaż przycisk
+    video.onended = showDeadScreen;
+    
+    // Fallback w razie problemów z wideo (np. 3 sekundy)
+    clearTimeout(deathTimer);
+    deathTimer = setTimeout(showDeadScreen, 4000);
+  }
 }
+
+function showDeadScreen() {
+  clearTimeout(deathTimer);
+  $('deadContent').style.display = 'flex';
+}
+
 function menuAct(a){
   const n=menuN;if(!n)return;
   if(a==='1'){n.armed=false;n.state='patrol';n.hands=0;n.kneel=0;log('WRÓG #'+n.i+' ROZBROJONY I ZWOLNIONY')}
@@ -861,8 +904,12 @@ function reset(){
 }
 function respawn(){
   dead=false;hp=100;P.set(0,1.6,20);yaw=pitch=0;$('hpf').style.width='100%';
-  $('dead').classList.remove('on');$('modal').classList.remove('off');U.blood.value=0;
+  $('lostSignalScreen').classList.remove('on');
+  $('deadContent').style.display = 'none';
+  $('lostVideo').pause();
+  U.blood.value=0;
   for(const n of npcs)if(!n.dead){n.g.position.set((R()-.5)*20,0,-15-R()*6);n.state='patrol';n.seen=false;n.lost=0}
+  lock(); // Wracamy do gry
 }
 
 /* MENU GŁÓWNE — tło z obrazków i muzyka */
