@@ -116,7 +116,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 
 <div id="ldr"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/inflate.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script>
@@ -1035,7 +1035,7 @@ async function ensureLibs(){
   const hosts=['https://cdn.jsdelivr.net/npm/three@0.128.0/','https://unpkg.com/three@0.128.0/'];
   const lib=(ok,path)=>ok()?Promise.resolve():new Promise(res=>{
     const t=i=>{if(i>=hosts.length)return res();const sc=document.createElement('script');sc.src=hosts[i]+path;sc.onload=res;sc.onerror=()=>t(i+1);document.head.appendChild(sc)};t(0)});
-  await lib(()=>typeof Zlib!=='undefined','examples/js/libs/inflate.min.js');
+  await lib(()=>typeof fflate!=='undefined','examples/js/libs/fflate.min.js');
   await lib(()=>THREE.FBXLoader,'examples/js/loaders/FBXLoader.js');
   await lib(()=>THREE.SkeletonUtils,'examples/js/utils/SkeletonUtils.js');
   if(!THREE.FBXLoader||!THREE.SkeletonUtils)throw new Error('nie załadowały się biblioteki FBXLoader/SkeletonUtils (CDN zablokowany?)');
