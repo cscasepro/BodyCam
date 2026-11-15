@@ -308,7 +308,7 @@ const rc=new THREE.Raycaster();
 function los(a,b){const d=b.clone().sub(a),L=d.length();rc.set(a,d.normalize());rc.far=L;return rc.intersectObjects(obstM).length===0}
 
 /* AUDIO SYSTEM */
-let ac,master,menuMusic;
+let ac,master,menuMusic,menuMusicGain;
 const audioLoader=new THREE.AudioLoader();
 const AUDIO_SAMPLES={ pain:[], gun_pistol:[], gun_rifle:[] };
 const audioBuffers={};
@@ -350,6 +350,7 @@ function initAudio(){
   src.connect(lp).connect(g).connect(master);src.start();
 }
 
+/* ODTWARZANIE JEDNEGO LOSOWEGO DŹWIĘKU (death / gun) */
 function playSfx(cat, pt, vol=1, rate=1){
   if(!ac)return;
   const arr=AUDIO_SAMPLES[cat];
@@ -466,6 +467,7 @@ function kill(n,dir){
   n.lv=['armL','armR','legL','legR'].map(()=>({vx:(R()-.5)*16,vz:(R()-.5)*9,tx:(R()-.5)*2,tz:(R()<.5?-1:1)*(.3+R()*.9)}));
   if(R()<.35&&!t){n.lv[2].tx=n.lv[3].tx=1.6}
   n.mt=.5+R();n.mc=2+(R()*3|0);
+  // JEDEN losowy dźwięk śmierci — bez dubli
   playSfx('pain', n.g.position.clone(), 1.2, 0.9);
   n.pool=new THREE.Mesh(decG,new THREE.MeshBasicMaterial({color:0x3a0204,transparent:true,opacity:.92,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3}));
   n.pool.rotation.x=-Math.PI/2;n.pool.scale.setScalar(.01);n.pool.visible=false;scene.add(n.pool);n.pr=0;
@@ -474,7 +476,7 @@ function hitNPC(n,part,pt,dir,dmg){
   if(n.dead){blood(pt,dir,.4);return 'TRAFIENIE W ZWŁOKI'}
   const head=part==='head';blood(pt,dir,head?2.2:1);
   n.hp=0;n.bleed=20;n.bp=n.hit.find(h=>h.userData.part===part);
-  playSfx('pain', n.g.position.clone(), 0.8, 1.1);
+  // USUNIĘTE playSfx — dźwięk tylko w kill()
   if(n.hp<=0){
     kill(n,dir);
     if(head&&cam.position.distanceTo(pt)<6)U.blood.value=Math.min(1,U.blood.value+.55);
@@ -716,7 +718,6 @@ function fire(){
   
   nz(.4,.6);
   
-  // RAYCASTING FIX — używamy allHit (NPC) + obstM (świat)
   const rayTargets = allHit.concat(obstM);
   
   for(let p=0;p<w.pel;p++){
@@ -724,7 +725,7 @@ function fire(){
     rc.set(cam.position,d);rc.far=100;
     const hits = rc.intersectObjects(rayTargets);
     if(hits.length>0){
-      const hit = hits[0]; // bierzemy pierwszy trafiony obiekt
+      const hit = hits[0];
       if(hit.object.userData && hit.object.userData.npc){
         const u=hit.object.userData;
         const m=hitNPC(u.npc,u.part,hit.point,d,w.dmg);
@@ -732,7 +733,7 @@ function fire(){
         $('hm').style.opacity=1;clearTimeout(fire.t);fire.t=setTimeout(()=>$('hm').style.opacity=0,95);
         log('WRÓG #'+u.npc.i+': '+m);
       } else {
-        hole(hit.point,hit.face.normal.clone()); // trafiono ścianę
+        hole(hit.point,hit.face.normal.clone());
       }
     }
   }
@@ -804,7 +805,7 @@ function respawn(){
   for(const n of npcs)if(!n.dead){n.g.position.set((R()-.5)*20,0,-15-R()*6);n.state='patrol';n.seen=false;n.lost=0}
 }
 
-/* NOWE MENU GŁÓWNE — logika */
+/* MENU GŁÓWNE — tło z obrazków i muzyka */
 const bgImages=['capsule_616x353.jpg','movie_232x130.jpg','obraz_2026-11-15_002750835.png'];
 let bgIndex=0;
 function setupMenu(){
@@ -821,7 +822,7 @@ function setupMenu(){
     imgs.forEach(img=>img.classList.remove('active'));
     bgIndex=(bgIndex+1)%imgs.length;
     imgs[bgIndex].classList.add('active');
-  },5000); // Zmiana co 5 sekund
+  },5000);
 }
 setupMenu();
 
@@ -830,17 +831,18 @@ $('startBtn').onclick=()=>{
   initAudio();
   loadAudios();
   
-  // Muzyka w tle
   audioLoader.load('music_menu_staging_drone.mp3', buffer=>{
+    if(menuMusic){try{menuMusic.stop()}catch(e){}}
     menuMusic=ac.createBufferSource();
     menuMusic.buffer=buffer;
     menuMusic.loop=true;
-    const g=ac.createGain();
-    g.gain.value=0.4;
-    menuMusic.connect(g).connect(master);
+    menuMusicGain=ac.createGain();
+    menuMusicGain.gain.value=0.4;
+    menuMusic.connect(menuMusicGain).connect(master);
     menuMusic.start();
-    // Stop muzyki po 3 sekundach (gdy kamera się włącza)
-    setTimeout(()=>{if(menuMusic)g.gain.setTargetAtTime(0,ac.currentTime,0.5)},3000);
+    setTimeout(()=>{
+      if(menuMusicGain)menuMusicGain.gain.setTargetAtTime(0,ac.currentTime,0.5)
+    },3000);
   });
   
   lock();
