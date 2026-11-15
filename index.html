@@ -295,8 +295,8 @@ const brickMat=new THREE.MeshStandardMaterial({map:brickTex,bumpMap:brickTex,bum
 [concreteMat,rustMat,woodMat,asphaltMat,metalMat].forEach(m=>{m.bumpMap=m.map;m.bumpScale=1.2});
 
 /* ŚWIAT */
-scene.add(new THREE.HemisphereLight(0xdce6f2,0x3b3e42,1.0)); // jaśniejsze światło otoczenia
-const sun=new THREE.DirectionalLight(0xfff5e8,2.0);sun.position.set(8,15,9);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+scene.add(new THREE.HemisphereLight(0xdce6f2,0x3b3e42,0.6)); // Przyciemnione światło otoczenia
+const sun=new THREE.DirectionalLight(0xfff5e8,1.5);sun.position.set(8,15,9);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
 Object.assign(sun.shadow.camera,{left:-26,right:26,top:26,bottom:-26,near:1,far:50});sun.shadow.bias=-.0004;scene.add(sun);
 {const f=new THREE.Mesh(new THREE.PlaneGeometry(120,120),asphaltMat);f.rotation.x=-Math.PI/2;f.receiveShadow=true;scene.add(f)}
 const obst=[],obstM=[];
@@ -316,6 +316,33 @@ addBox(0,-2,5,2,1.2,concreteMat);
 addBox(25, -40, 0.4, 3.2, 10, concreteMat);
 addBox(35, -40, 0.4, 3.2, 10, concreteMat);
 addBox(30, -45, 10, 3.2, 0.4, concreteMat);
+
+// NOWOŚĆ: OGROMNA CIEMNA HALA (PODZIELONA NA POKOJE)
+// Wejście jest od strony północnej (z-10)
+// Główna bryła hali - środek na (-15, -15)
+{
+  // Ściany zewnętrzne (brak dachu, by nie blokować światła z zewnątrz, ale wnętrze będzie w cieniu)
+  addBox(-35, -15, 1, 6, 30, concreteMat); // Lewa
+  addBox(5, -15, 1, 6, 30, concreteMat); // Prawa
+  addBox(-15, -30, 40, 6, 1, concreteMat); // Tył
+  
+  // Przód z dziurą na wejście
+  addBox(-27, -0.5, 15, 6, 1, concreteMat); // Przód lewy
+  addBox(-3, -0.5, 15, 6, 1, concreteMat); // Przód prawy
+
+  // Wewnętrzne ściany (tworzą 3 pokoje i korytarz)
+  addBox(-15, -15, 1, 6, 20, concreteMat); // Główny korytarz na środku
+  addBox(-25, -20, 18, 6, 1, concreteMat); // Ściana pokoju lewego
+  addBox(-5, -20, 18, 6, 1, concreteMat); // Ściana pokoju prawego
+  addBox(-25, -10, 18, 6, 1, concreteMat); // Ściana pokoju lewego przód
+  addBox(-5, -10, 18, 6, 1, concreteMat); // Ściana pokoju prawego przód
+}
+
+// Światła punktowe wewnątrz hali (bardzo słabe, by było ciemno)
+const hallLight = new THREE.PointLight(0xffaa55, 0.5, 30);
+hallLight.position.set(-15, 4, -20); scene.add(hallLight);
+const hallLight2 = new THREE.PointLight(0x5555ff, 0.2, 20);
+hallLight2.position.set(-15, 4, -10); scene.add(hallLight2);
 
 const CELLS=[],BL=[],LP=[0,1,2,3].map(()=>{const l=new THREE.PointLight(0xffe2b8,1.5,20);scene.add(l);return l});scene.add(sun.target);
 let lt=0;
@@ -339,14 +366,14 @@ function bld(cx,cz,nc,nr,cw,cd,fz){
 }
 bld(-15,-16,2,2,5.5,4.5,1);bld(15,-16,2,2,5.5,4.5,1);bld(-15,15,2,2,5.5,4.5,-1);bld(15,15,2,2,5.5,4.5,-1);bld(0,-19,3,1,5,5,1);bld(0,5,2,1,5,4,1);
 bld(-36,-30,3,2,5.5,4.5,1);bld(36,-30,3,2,5.5,4.5,1);bld(-36,30,3,2,5.5,4.5,-1);bld(36,30,3,2,5.5,4.5,-1);bld(-36,0,2,3,5,4.5,1);bld(36,0,2,3,5,4.5,1);bld(0,-38,4,2,5.5,4.5,1);bld(0,38,4,2,5.5,4.5,-1);bld(-30,-14,2,1,5,5,1);bld(30,-14,2,1,5,5,1);bld(-30,14,2,1,5,5,-1);bld(30,14,2,1,5,5,-1);
-for(let i=0;i<45;i++){const x=-44+R()*88,z=-44+R()*88;if(Math.hypot(x,z)<8)continue;if(Math.hypot(x,z-20)<8)continue;addBox(x,z,1+R()*2.5,.9+R()*1.6,1+R()*2.5,R()<.4?woodMat:concreteMat)}
+for(let i=0;i<45;i++){const x=-44+R()*88,z=-44+R()*88;if(Math.hypot(x,z)<8)continue;if(Math.hypot(x,z-20)<8)continue;if(x>-36&&x<4&&z>-30&&z<0)continue;addBox(x,z,1+R()*2.5,.9+R()*1.6,1+R()*2.5,R()<.4?woodMat:concreteMat)}
 /* REKWIZYTY */
 const mkM=(c,r,m)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m||0});
 const paintCols=[0x7a1c1c,0x1f3a5f,0x3b3f44,0x8a8a8a,0x2d4a2f,0xb0a070,0x111111];
 const glassM=mkM(0x0b1218,.1,.8),tireM=mkM(0x101010,.95),rimM=mkM(0x8b8b8b,.4,.8),dumpM=mkM(0x2e5a3a,.7,.3),coneM=mkM(0xe8630a,.6),
 barrelM=[mkM(0x2f4f7f,.6,.4),mkM(0x7f2f2f,.6,.4),mkM(0x3a5a3a,.6,.4)],trashM=[mkM(0x1a1a1a,.8),mkM(0x6b5a45,.9),mkM(0xb8b8b0,.8),mkM(0x3d5e8a,.7)],
 bricM=mkM(0x8a4a38,.9),headM=new THREE.MeshBasicMaterial({color:0xfff2c0}),tailM=new THREE.MeshBasicMaterial({color:0x8a0000});
-function propFree(x,z,r){if(Math.abs(x)>44||Math.abs(z)>44)return false;if(x>22&&x<38&&z>-48&&z<-32)return false;
+function propFree(x,z,r){if(Math.abs(x)>44||Math.abs(z)>44)return false;if(x>22&&x<38&&z>-48&&z<-32)return false;if(x>-36&&x<4&&z>-30&&z<0)return false;
 for(const o of obst){if(Math.abs(x-o.x)<o.w/2+r&&Math.abs(z-o.z)<o.d/2+r)return false}return true}
 function mesh(geo,mat,x,y,z,par){const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;(par||scene).add(m);return m}
 function place(n,r,fn){let t=0,c=0;while(c<n&&t<n*40){t++;const x=-44+R()*88,z=-44+R()*88;if(!propFree(x,z,r))continue;fn(x,z);c++}}
