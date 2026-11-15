@@ -26,15 +26,17 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #log{top:calc(70px + env(safe-area-inset-top,0px));left:20px;color:#fcd34d;opacity:0;transition:opacity .3s}
 #menu{position:absolute;left:50%;bottom:calc(120px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:rgba(10,10,15,.93);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:14px 22px;z-index:25;display:none;flex-direction:column;gap:8px;align-items:center;text-align:center}
 #menu.on{display:flex}#menu h3{margin:0;color:var(--amb);letter-spacing:3px;font-size:12px}#menu p{margin:0 0 4px;font-style:italic;color:#d1d5db}
-.sb{min-width:250px;padding:9px 14px;background:rgba(60,60,70,.7);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:4px;font:inherit;letter-spacing:2px;cursor:pointer}
-#dead{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:40;text-align:center;background:rgba(40,0,0,.92)}
-#dead.on{display:flex}#dead h2{color:#dc2626;letter-spacing:6px;font-size:26px;margin:0 0 10px}
+.sb{min-width:250px;padding:9px 14px;background:rgba(60,60,70,.7);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:4px;font:inherit;letter-spacing:2px}
+#dead,#modal{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:40;text-align:center}
+#dead{background:rgba(40,0,0,.92)}#dead.on{display:flex}#dead h2{color:#dc2626;letter-spacing:6px;font-size:26px;margin:0 0 10px}
+.card{background:rgba(20,20,24,.96);border:1px solid #3f3f46;border-radius:12px;padding:22px;max-width:420px;width:92%;text-align:left}
+.card h1{font-size:14px;letter-spacing:3px;margin:0 0 10px}.card p{font:12px/1.5 system-ui,sans-serif;color:#d4d4d8;margin:0 0 12px}
 .go{width:100%;padding:12px;background:#059669;color:#fff;border:0;border-radius:8px;font:bold 12px ui-monospace,monospace;letter-spacing:2px;cursor:pointer}
 .row{display:flex;justify-content:space-between;align-items:center;margin:0 0 12px}
 #bat{color:#34d399;font-weight:bold}
 
 /* NOWE MENU GŁÓWNE */
-#mainMenu{position:absolute;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;transition: opacity 0.5s ease;}
+#mainMenu{position:absolute;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
 #bgContainer{position:absolute;inset:0;background:#050505}
 #bgContainer img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 2s ease-in-out;filter:brightness(.6) contrast(1.2)}
 #bgContainer img.active{opacity:1}
@@ -42,12 +44,14 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #mainMenu p{position:relative;z-index:10;color:#a1a1aa;letter-spacing:4px;margin-bottom:50px;font-size:14px}
 #startBtn{position:relative;z-index:10;padding:20px 80px;background:#dc2626;color:#fff;font:bold 24px ui-monospace,monospace;letter-spacing:6px;border:2px solid #ef4444;border-radius:4px;cursor:pointer;box-shadow:0 0 30px rgba(220,38,38,0.6);transition:all .2s;text-transform:uppercase}
 #startBtn:hover{background:#ef4444;box-shadow:0 0 50px rgba(220,38,38,1);transform:scale(1.05)}
-#mainMenu.hidden{opacity:0; pointer-events:none;}
+#mainMenu.hidden{display:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 </style></head><body>
 <div id="box">
 <div id="mainMenu">
-  <div id="bgContainer"></div>
+  <div id="bgContainer">
+    <!-- Obrazki ładowane przez JS -->
+  </div>
   <h1>BODYCAM</h1>
   <p>AXON BODY 4 // TACTICAL SIMULATOR</p>
   <button id="startBtn">START</button>
@@ -61,12 +65,14 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 <div id="log" class="o p"></div>
 <div id="bl" class="o p"><b>WASD</b> ruch · <b>SHIFT</b> sprint · <b>SPACJA</b> skok · <b>C</b> kucanie · <b>LPM</b> ogień · <b>PPM</b> celowanie · <b>R</b> przeładowanie · <b>1-3</b> broń · <b>G</b> nowy wróg · <b>X</b> reset · <b>F</b> latarka</div>
 <div id="br" class="o p"><div id="wn" style="color:#a1a1aa;font-size:11px"></div><div style="font-size:18px;font-weight:bold"><span id="am">15</span> <span id="mm" style="font-size:11px;color:#a1a1aa"></span> <span id="rl" style="font-size:11px;color:var(--amb)"></span></div></div>
-
 <div id="menu"><h3 id="mt"></h3><p id="mx"></p>
 <button class="sb" data-a="1" style="border-left:3px solid #3b82f6">[1] ROZBRÓJ</button>
 <button class="sb" data-a="2" style="border-left:3px solid #f59e0b">[2] NA KOLANA</button>
 <button class="sb" data-a="3" style="border-left:3px solid #dc2626">[3] ZASTRZEL</button></div>
 <div id="dead"><h2>OFFICER DOWN</h2><p style="color:var(--dim)">BODYCAM FEED TERMINATED</p><button id="rs" class="go" style="width:auto;padding:12px 32px;background:#dc2626">RESPAWN</button></div>
+<div id="modal" class="off"><div class="card"><h1>● BODYCAM SANDBOX // PAUZA</h1>
+<div class="row"><span>Czułość myszy</span><input id="sens" type="range" min=".3" max="2.5" step=".1" value="1"></div>
+<button id="go" class="go">WZNÓW GRĘ</button></div></div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -302,7 +308,10 @@ const rc=new THREE.Raycaster();
 function los(a,b){const d=b.clone().sub(a),L=d.length();rc.set(a,d.normalize());rc.far=L;return rc.intersectObjects(obstM).length===0}
 
 /* AUDIO SYSTEM */
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let ac,master,menuMusic;
+const audioLoader=new THREE.AudioLoader();
+const AUDIO_SAMPLES={ pain:[], gun_pistol:[], gun_rifle:[] };
+const audioBuffers={};
 const AUDIO_FILES={
   pain:[
     'dragon-studio-zombie-dying-sound-357974.mp3',
@@ -313,31 +322,46 @@ const AUDIO_FILES={
   gun_pistol:['freesound_community-perdition-1911-pistol-82365.mp3'],
   gun_rifle:['sovetsky_rastov72-ak74-sound-effect-351437.mp3']
 };
-const audioBuffers = {};
 
-// Ładujemy pliki
-for(const cat in AUDIO_FILES){
-  AUDIO_FILES[cat].forEach(file=>{
-    fetch(file)
-      .then(res=>res.arrayBuffer())
-      .then(buf=>audioCtx.decodeAudioData(buf))
-      .then(decoded=>{ audioBuffers[file]=decoded; })
-      .catch(e=>console.warn('Błąd audio:', file));
-  });
+function loadAudios(){
+  for(const cat in AUDIO_FILES){
+    AUDIO_FILES[cat].forEach(file=>{
+      audioLoader.load(file,buffer=>{
+        audioBuffers[file]=buffer;
+        AUDIO_SAMPLES[cat].push(file);
+      },undefined,err=>console.warn('Błąd audio (może plik nie istnieje):',file));
+    });
+  }
+}
+
+function initAudio(){
+  if(ac)return;
+  ac=new (window.AudioContext||window.webkitAudioContext)();
+  master=ac.createDynamicsCompressor();
+  master.threshold.value=-18;master.knee.value=6;master.ratio.value=12;
+  master.attack.value=.003;master.release.value=.12;
+  master.connect(ac.destination);
+  
+  const n=ac.sampleRate*4|0,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(R()-.5)*.5;
+  const src=ac.createBufferSource();src.buffer=b;src.loop=true;
+  const lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=380;
+  const g=ac.createGain();g.gain.value=.012;
+  src.connect(lp).connect(g).connect(master);src.start();
 }
 
 function playSfx(cat, pt, vol=1, rate=1){
-  if(!audioCtx)return;
-  const arr=AUDIO_FILES[cat];
+  if(!ac)return;
+  const arr=AUDIO_SAMPLES[cat];
   if(!arr||!arr.length)return;
   const file=arr[R()*arr.length|0];
   const buf=audioBuffers[file];
   if(!buf)return;
   
-  const src=audioCtx.createBufferSource();src.buffer=buf;
+  const src=ac.createBufferSource();src.buffer=buf;
   src.playbackRate.value=rate*(0.92+R()*.16);
-  const gain=audioCtx.createGain();
-  const panner=audioCtx.createPanner();
+  const gain=ac.createGain();
+  const panner=ac.createPanner();
   panner.panningModel='HRTF';panner.distanceModel='inverse';
   panner.refDistance=2;panner.maxDistance=60;panner.rolloffFactor=1.2;
   
@@ -350,24 +374,29 @@ function playSfx(cat, pt, vol=1, rate=1){
   const dist=pt?pt.distanceTo(cam.position):0;
   gain.gain.value=vol*Math.max(0,1-dist/60);
   
-  src.connect(gain).connect(panner).connect(audioCtx.destination);
+  src.connect(gain).connect(panner).connect(master);
   src.start();
 }
 
 function tone(f,f2,d,v,ty,dist){
-  if(!audioCtx)return;const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain(),flt=audioCtx.createBiquadFilter();
+  if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain(),flt=ac.createBiquadFilter();
   o.type=ty||'sine';o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f2,t+d);
   flt.type='lowpass';const far=dist?Math.min(1,dist/40):0;
   flt.frequency.value=Math.max(300,4000-far*3500);
   g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);
-  o.connect(flt).connect(g).connect(audioCtx.destination);o.start(t);o.stop(t+d);
+  o.connect(flt).connect(g).connect(master);o.start(t);o.stop(t+d);
+}
+
+function groan(p,f,len){
+  if(!ac)return;
+  playSfx('pain', p.clone(), 0.8);
 }
 
 function thump(v,d){
-  if(!audioCtx)return;const t=audioCtx.currentTime+d,o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  if(!ac)return;const t=ac.currentTime+d,o=ac.createOscillator(),g=ac.createGain();
   o.type='sine';o.frequency.setValueAtTime(75,t);o.frequency.exponentialRampToValueAtTime(38,t+.13);
   g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);
-  o.connect(g).connect(audioCtx.destination);o.start(t);o.stop(t+.17);
+  o.connect(g).connect(master);o.start(t);o.stop(t+.17);
 }
 
 /* KREW / DEKALE */
@@ -437,9 +466,7 @@ function kill(n,dir){
   n.lv=['armL','armR','legL','legR'].map(()=>({vx:(R()-.5)*16,vz:(R()-.5)*9,tx:(R()-.5)*2,tz:(R()<.5?-1:1)*(.3+R()*.9)}));
   if(R()<.35&&!t){n.lv[2].tx=n.lv[3].tx=1.6}
   n.mt=.5+R();n.mc=2+(R()*3|0);
-  
-  playSfx('pain', n.g.position.clone(), 1.2, 0.8);
-  
+  playSfx('pain', n.g.position.clone(), 1.2, 0.9);
   n.pool=new THREE.Mesh(decG,new THREE.MeshBasicMaterial({color:0x3a0204,transparent:true,opacity:.92,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3}));
   n.pool.rotation.x=-Math.PI/2;n.pool.scale.setScalar(.01);n.pool.visible=false;scene.add(n.pool);n.pr=0;
 }
@@ -447,9 +474,7 @@ function hitNPC(n,part,pt,dir,dmg){
   if(n.dead){blood(pt,dir,.4);return 'TRAFIENIE W ZWŁOKI'}
   const head=part==='head';blood(pt,dir,head?2.2:1);
   n.hp=0;n.bleed=20;n.bp=n.hit.find(h=>h.userData.part===part);
-  
   playSfx('pain', n.g.position.clone(), 0.8, 1.1);
-  
   if(n.hp<=0){
     kill(n,dir);
     if(head&&cam.position.distanceTo(pt)<6)U.blood.value=Math.min(1,U.blood.value+.55);
@@ -472,6 +497,7 @@ function updNPC(n,dt){
       if(n.fall>.95){const rest=i<2?-.9:0;p.rotation.x+=(rest-p.rotation.x)*dt*2;}
     });
     n.flash.visible=false;
+    if(n.mc>0){n.mt-=dt;if(n.mt<=0){n.mt=1+R()*1.8;n.mc--;groan(n.g.position,85+R()*40,.8+R()*.4)}}
     if(n.fall>.6&&n.pr<1){n.pr=Math.min(1,n.pr+dt*.08);n.pool.visible=true;n.hit[0].getWorldPosition(tmp);n.pool.position.set(tmp.x,.03,tmp.z);n.pool.scale.setScalar(.12+.8*n.pr)}
     if(n.bleed>0){n.bleed-=dt;n.dc=(n.dc||0)-dt;if(n.dc<=0){n.dc=.15;n.head.getWorldPosition(tmp);drip(tmp)}}
     return;
@@ -509,7 +535,7 @@ function updNPC(n,dt){
         if(n.aim>.8&&n.seen&&n.fire<=0){
           n.fire=.35+R()*.3;n.flash.visible=true;n.flashT=.06;
           playSfx('gun_pistol', n.g.position.clone(), 0.8, 1);
-          tone(220,50,.2,Math.min(.5,3/(dist+4)),'sawtooth',dist);
+          nz(.25,Math.min(.4,2/(dist+3)),undefined,dist);
           if(R()<n.acc*Math.max(.15,1-dist/40)*(crouchAmt>.5?.8:1.1))hurtPlayer(6+R()*8);
         }
       }
@@ -688,6 +714,9 @@ function fire(){
   else if(slot===2) playSfx('gun_rifle', cam.position.clone(), 1.2, 1); 
   else tone(slot===3?95:slot===2?140:180,30,.3,.8,'triangle'); 
   
+  nz(.4,.6);
+  
+  // RAYCASTING FIX — używamy allHit (NPC) + obstM (świat)
   const rayTargets = allHit.concat(obstM);
   
   for(let p=0;p<w.pel;p++){
@@ -695,7 +724,7 @@ function fire(){
     rc.set(cam.position,d);rc.far=100;
     const hits = rc.intersectObjects(rayTargets);
     if(hits.length>0){
-      const hit = hits[0];
+      const hit = hits[0]; // bierzemy pierwszy trafiony obiekt
       if(hit.object.userData && hit.object.userData.npc){
         const u=hit.object.userData;
         const m=hitNPC(u.npc,u.part,hit.point,d,w.dmg);
@@ -703,7 +732,7 @@ function fire(){
         $('hm').style.opacity=1;clearTimeout(fire.t);fire.t=setTimeout(()=>$('hm').style.opacity=0,95);
         log('WRÓG #'+u.npc.i+': '+m);
       } else {
-        hole(hit.point,hit.face.normal.clone());
+        hole(hit.point,hit.face.normal.clone()); // trafiono ścianę
       }
     }
   }
@@ -721,6 +750,7 @@ function log(t){const e=$('log');e.textContent='[OSD] '+t;e.style.opacity=1;clea
 function hurtPlayer(a){
   if(dead||hurtCd>0)return;hurtCd=.1;hp-=a;shake=.04;U.hurt.value=1;
   tone(80,40,.25,.4,'sawtooth');
+  if(gcd<=0){groan(P,95+R()*25,.5+R()*.3);gcd=.7}
   stress=1;bloodV=Math.min(1,bloodV+.45+a*.03);
   $('hpf').style.width=Math.max(0,hp)+'%';
   if(hp<=0){dead=true;$('dead').classList.add('on');$('menu').classList.remove('on');if(document.pointerLockElement)document.exitPointerLock()}
@@ -770,15 +800,13 @@ function reset(){
 }
 function respawn(){
   dead=false;hp=100;P.set(0,1.6,20);yaw=pitch=0;$('hpf').style.width='100%';
-  $('dead').classList.remove('on');U.blood.value=0;
+  $('dead').classList.remove('on');$('modal').classList.remove('off');U.blood.value=0;
   for(const n of npcs)if(!n.dead){n.g.position.set((R()-.5)*20,0,-15-R()*6);n.state='patrol';n.seen=false;n.lost=0}
-  if(!locked&&!fb)box.requestPointerLock&&box.requestPointerLock();
 }
 
-/* MENU GŁÓWNE */
+/* NOWE MENU GŁÓWNE — logika */
 const bgImages=['capsule_616x353.jpg','movie_232x130.jpg','obraz_2026-11-15_002750835.png'];
 let bgIndex=0;
-
 function setupMenu(){
   const container=$('bgContainer');
   bgImages.forEach((src,i)=>{
@@ -793,44 +821,41 @@ function setupMenu(){
     imgs.forEach(img=>img.classList.remove('active'));
     bgIndex=(bgIndex+1)%imgs.length;
     imgs[bgIndex].classList.add('active');
-  },5000); 
+  },5000); // Zmiana co 5 sekund
 }
 setupMenu();
 
 $('startBtn').onclick=()=>{
-  $('mainMenu').classList.add('hidden'); // Ukrywa menu, ale go nie usuwa (silnik renderuje pod nim)
+  $('mainMenu').classList.add('hidden');
+  initAudio();
+  loadAudios();
   
-  if(audioCtx.state === 'suspended') {
-      audioCtx.resume();
-  }
-
   // Muzyka w tle
-  fetch('music_menu_staging_drone.mp3')
-    .then(res => res.arrayBuffer())
-    .then(buf => audioCtx.decodeAudioData(buf))
-    .then(decoded => {
-        const src = audioCtx.createBufferSource();
-        src.buffer = decoded;
-        src.loop = true;
-        const g = audioCtx.createGain();
-        g.gain.value = 0.4;
-        src.connect(g).connect(audioCtx.destination);
-        src.start();
-        setTimeout(()=>{if(src)g.gain.setTargetAtTime(0,audioCtx.currentTime,0.5)}, 2500);
-    }).catch(e=>console.warn("Błąd muzyki:", e));
-
-  // Kursor blokujemy z opóźnieniem, by dać silnikowi klatkę czasu na render
-  setTimeout(() => {
-    box.requestPointerLock && box.requestPointerLock();
-  }, 100);
+  audioLoader.load('music_menu_staging_drone.mp3', buffer=>{
+    menuMusic=ac.createBufferSource();
+    menuMusic.buffer=buffer;
+    menuMusic.loop=true;
+    const g=ac.createGain();
+    g.gain.value=0.4;
+    menuMusic.connect(g).connect(master);
+    menuMusic.start();
+    // Stop muzyki po 3 sekundach (gdy kamera się włącza)
+    setTimeout(()=>{if(menuMusic)g.gain.setTargetAtTime(0,ac.currentTime,0.5)},3000);
+  });
+  
+  lock();
 };
 
 /* INPUT */
-renderer.domElement.onclick=()=>{if(!locked&&!dead&&$('mainMenu').classList.contains('hidden')){box.requestPointerLock&&box.requestPointerLock();}};
+const lock=()=>{box.requestPointerLock&&box.requestPointerLock()};
+$('go').onclick=lock;
+renderer.domElement.onclick=()=>{if(!locked&&!dead&&$('mainMenu').classList.contains('hidden'))lock()};
 document.addEventListener('pointerlockchange',()=>{
   locked=document.pointerLockElement===box;fb=false;
+  if(locked)$('modal').classList.add('off');
+  else if(!dead&&$('mainMenu').classList.contains('hidden')){$('modal').classList.remove('off');down=false;adsOn=false}
 });
-document.addEventListener('pointerlockerror',()=>{audioCtx.resume();fb=true;locked=true;log('BRAK POINTER LOCK: obrót strzałkami')});
+document.addEventListener('pointerlockerror',()=>{initAudio();fb=true;locked=true;$('modal').classList.add('off');log('BRAK POINTER LOCK: obrót strzałkami')});
 addEventListener('mousemove',e=>{if(!locked||fb)return;const s=.0019*sens*(adsOn?.58:1);yaw-=e.movementX*s;pitch=Math.max(-1.42,Math.min(1.42,pitch-e.movementY*s))});
 addEventListener('mousedown',e=>{if(!locked||dead)return;if(e.button===0){down=true;fire()}else if(e.button===2)adsOn=true});
 addEventListener('mouseup',e=>{if(e.button===0)down=false;if(e.button===2)adsOn=false});
