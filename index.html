@@ -40,7 +40,6 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #deadContent{display:none;flex-direction:column;align-items:center;justify-content:center;z-index:2;text-align:center}
 #deadContent h2{color:#dc2626;letter-spacing:6px;font-size:30px;margin:0 0 10px;text-shadow:0 0 15px red;}
 #deadContent p{color:var(--dim);letter-spacing:2px;margin-bottom:20px}
-#ldr{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:200;display:none;padding:6px 14px;background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.25);color:#fff;font:11px/1.5 monospace;letter-spacing:1px;text-align:center;max-width:90vw;word-break:break-word;user-select:text}
 </style></head><body>
 <div id="box">
 <div id="mainMenu">
@@ -107,10 +106,9 @@ const skins=[0xd8a684,0xc68e6b,0x8d5b3e,0xe2b799,0xa87150];
 const camoCol=i=>[0x5b6244,0x6b6a58,0x4a4f45][i%3];
 const mkM=(c,r,m)=>new THREE.MeshStandardMaterial({color:c,roughness:r||.8,metalness:m||0});
 
-/* NPC - PROCEDURALNY (GWARANCJA DZIAŁANIA) */
+/* NPC - GWARANCJA WIDOCZNOŚCI */
 function mkNPC(x,z){
  const i=NID++,g=new THREE.Group();g.rotation.order='YXZ';g.position.set(x,0,z);
- // Tworzymy realistycznego żołnierza z brył
  const n={g,i,hp:100,state:'patrol',dead:false,armed:true,anim:R()*9,yaw:R()*6.28,aim:0,fire:0,sT:0,seen:false,lost:0,cT:0,strafe:1,wp:rwp(),
   acc:.5,spd:1.2,bleed:0,fall:0,hands:0,kneel:0,hit:[],flashT:0,lp:null,mv:V(0,0,0)};
   
