@@ -41,7 +41,6 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 #deadContent h2{color:#dc2626;letter-spacing:6px;font-size:30px;margin:0 0 10px;text-shadow:0 0 15px red;}
 #deadContent p{color:var(--dim);letter-spacing:2px;margin-bottom:20px}
 #ldr{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:200;display:none;padding:6px 14px;background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.25);color:#fff;font:11px/1.5 monospace;letter-spacing:1px;text-align:center;max-width:90vw;word-break:break-word;user-select:text}
-#dbg{position:fixed;bottom:6px;left:6px;z-index:150;color:#0f0;font:10px monospace;background:rgba(0,0,0,.85);padding:6px 10px;border-radius:4px;max-width:70vw;display:none;user-select:text;white-space:pre-wrap;max-height:200px;overflow:auto}
 </style></head><body>
 <div id="box">
 <div id="mainMenu">
@@ -55,7 +54,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 <div id="tr" class="o"><div class="p"><span id="bat">● BAT 94%</span> | <span id="fps">60 FPS</span></div></div>
 <div id="tr2" class="o">GPS: 52.2297°N 21.0122°E<br>OFFICER: J. KOWALSKI</div>
 <div id="log" class="o p"></div>
-<div id="bl" class="o p"><b>WASD</b> ruch · <b>LPM</b> ogień · <b>R</b> przeładowanie · <b>1-3</b> broń · <b>G</b> nowy wróg · <b>H</b> debug</div>
+<div id="bl" class="o p"><b>WASD</b> ruch · <b>LPM</b> ogień · <b>R</b> przeładowanie · <b>1-3</b> broń · <b>G</b> nowy wróg</div>
 <div id="br" class="o p"><div id="wn" style="color:#a1a1aa;font-size:11px"></div><div style="font-size:18px;font-weight:bold"><span id="am">15</span> <span id="mm" style="font-size:11px;color:#a1a1aa"></span> <span id="rl" style="font-size:11px;color:var(--amb)"></span></div></div>
 <div id="modal" class="off"><div class="card"><h1>● PAUZA</h1><button id="go" class="go">WZNÓW GRĘ</button></div></div>
 </div>
@@ -68,15 +67,12 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
   </div>
 </div>
 <div id="ldr"></div>
-<div id="dbg"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 <script>
 /* ============================ PODSTAWY ============================ */
 const $=id=>document.getElementById(id),R=Math.random,V=(x,y,z)=>new THREE.Vector3(x,y,z);
-const dbg=$('dbg');let dbgOn=false;
-function dbgLog(...a){if(dbgOn){dbg.style.display='block';dbg.textContent+=a.join(' ')+'\n';dbg.scrollTop=dbg.scrollHeight}}
 const box=$('box'),renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -88,7 +84,7 @@ function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);cam.asp
 addEventListener('resize',resize);resize();
 
 /* ŚWIAT */
-const hemi=new THREE.HemisphereLight(0xdce6f2,0x3b3e42,1.5);scene.add(hemi);
+const hemi=new THREE.HemisphereLight(0xdce6f2,0x3b3e42,2.0);scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xfff5e8,1.5);sun.position.set(8,15,9);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
 Object.assign(sun.shadow.camera,{left:-30,right:30,top:30,bottom:-30,near:1,far:60});scene.add(sun);
 {const f=new THREE.Mesh(new THREE.PlaneGeometry(120,120),new THREE.MeshStandardMaterial({color:0x2a2c30,roughness:.95}));f.rotation.x=-Math.PI/2;f.receiveShadow=true;scene.add(f)}
@@ -117,19 +113,7 @@ const mkM=(c,r,m)=>new THREE.MeshStandardMaterial({color:c,roughness:r||.8,metal
 /* ASSETS SAS */
 const GH_REPO='cscasepro/BodyCam';
 const FBX_FILES={model:'sas cs16.fbx',walk:'Walking.fbx',dying:'Dying.fbx',gun:'Gunplay.fbx'};
-const TEX_FILES={head:'SAS_head.png',body:'SAS_body.png'};
 const ASSETS={state:'loading',src:null,clips:{},boneMap:null,scale:1,yawFix:0,yOffset:0,error:null};
-
-// Uproszczone szukanie kości
-function findBoneByKeywords(model, keywords) {
-  let found = null;
-  model.traverse(o => {
-    if (found || !o.isBone) return;
-    const name = o.name.toLowerCase();
-    if (keywords.some(k => name.includes(k))) found = o;
-  });
-  return found;
-}
 
 function cloneSkinned(source){
  const srcMap=new Map(),cloneMap=new Map();
@@ -169,21 +153,14 @@ async function loadAssets(){
   const tree=await ghTree();
   const remote=name=>{const k=name.toLowerCase().replace(/[^a-z0-9.]/g,''),p=tree.files.find(f=>f.toLowerCase().replace(/[^a-z0-9.]/g,'').endsWith(k));return p?'https://raw.githubusercontent.com/'+GH_REPO+'/'+tree.br+'/'+p.split('/').map(encodeURIComponent).join('/'):null};
   const getFile=async name=>{const u=remote(name);if(!u)return null;const r=await fetch(u);if(!r.ok)throw new Error(name+' HTTP '+r.status);return r};
-  const bufs={},texs={};
+  const bufs={};
   for(const [k,f] of Object.entries(FBX_FILES)){show('POBIERANIE '+f);const r=await getFile(f);if(r)bufs[k]=await r.arrayBuffer()}
-  for(const [k,f] of Object.entries(TEX_FILES)){
-   try{const r=await getFile(f);if(r){const url=URL.createObjectURL(await r.blob());
-    texs[k]=await new Promise(res=>new THREE.TextureLoader().load(url,t=>{t.encoding=THREE.sRGBEncoding;res(t)},undefined,()=>res(null)))
-   }}catch(e){}
-  }
+  
   if(!bufs.walk)throw new Error('brak Walking.fbx');
   show('PARSOWANIE…');
-  const mgr=new THREE.LoadingManager();mgr.setURLModifier(()=>'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==');
+  const mgr=new THREE.LoadingManager();
   const ld=new THREE.FBXLoader(mgr),objs={};
   for(const k of Object.keys(bufs)){try{objs[k]=ld.parse(bufs[k],'')}catch(e){console.warn('parse',k,e)}}
-  const clipOf=o=>{const a=o&&o.animations;return a&&a.length?a.reduce((p,c)=>c.duration>p.duration?c:p):null};
-  const wclip=clipOf(objs.walk);
-  if(!wclip)throw new Error('Walking.fbx bez animacji');
 
   let tpl=null;
   for(const c of[objs.model,objs.walk]){
@@ -191,22 +168,35 @@ async function loadAssets(){
   }
   if(!tpl)throw new Error('brak modelu z meshem');
 
+  // WYCIĄGANIE TEKSTUR Z FBX
+  const fbxTextures = [];
+  tpl.traverse(o => {
+    if(o.isMesh && o.material) {
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach(m => {
+        if(m.map && m.map.image) fbxTextures.push(m.map);
+      });
+    }
+  });
+
   // RESKIN
+  let texIndex = 0;
   tpl.traverse(o=>{
    if(!o.isMesh)return;
    o.castShadow=true;o.receiveShadow=false;o.frustumCulled=false;
-   const m=Array.isArray(o.material)?o.material[0]:o.material;
-   const key=((m.name||'')+' '+(o.name||'')).toLowerCase();
-   const slot=/chrome|metal|weapon|gun/.test(key)?'chrome':/head|face|skin/.test(key)?'head':'body';
-   const tex=texs[slot]||null;
-   o.material=new THREE.MeshLambertMaterial({
-     map:tex||null,
-     color:tex?0xffffff:0x4a5a3a, // ciemnozielony jak tekstura nie działa
-     skinning:true,
-     transparent:false,
-     alphaTest:0,
-     side:THREE.DoubleSide // ważne dla CS 1.6
+   const mat = new THREE.MeshLambertMaterial({
+     color: 0x4a5a3a, // Oliwkowy zielony zamiast czerni
+     skinning: true,
+     transparent: false,
+     alphaTest: 0,
+     side: THREE.DoubleSide
    });
+   if (fbxTextures.length > 0) {
+     mat.map = fbxTextures[texIndex % fbxTextures.length];
+     mat.color.setHex(0xffffff); // reset koloru jeśli tekstura jest
+     texIndex++;
+   }
+   o.material = mat;
   });
 
   tpl.updateMatrixWorld(true);
@@ -215,42 +205,47 @@ async function loadAssets(){
   let scale=1;if(isFinite(H)&&H>1e-4)scale=1.78/H;
   let yOffset=-boxT.min.y*scale;
 
+  // ZBIERANIE KOŚCI WEDŁUG KOLEJNOŚCI
+  const bones = [];
+  tpl.traverse(c => { if (c.isBone) bones.push(c); });
+  console.log('[SAS] Znaleziono kości w modelu:', bones.length);
+
   ASSETS.src=tpl;ASSETS.clips={};ASSETS.scale=scale;ASSETS.yOffset=yOffset;
 
-  // RETARGET: ręczne przypisanie kości i wygenerowanie klipów
-  const hips = findBoneByKeywords(tpl, ['hip', 'pelvis']);
-  const modelBones = [];
-  tpl.traverse(c => { if (c.isBone) modelBones.push(c); });
-
-  for(const [k,obj] of Object.entries(objs)){
-    if(k==='model'||!obj.animations)continue;
-    const clip = obj.animations[0];
+  // MAPOWANIE PO INDEKSIE (niezawodne dla CS 1.6)
+  const mapClip = (srcClip, name) => {
     const newTracks = [];
-    for(const track of clip.tracks){
-      const bname = track.name.split('.')[0].toLowerCase();
-      let matched = null;
-      // dopasowanie po fragmencie nazwy
-      for (const b of modelBones) {
-        const mname = b.name.toLowerCase();
-        if (mname.includes(bname) || bname.includes(mname)) { matched = b; break; }
-      }
-      if(!matched && (bname.includes('hip')||bname.includes('pelvis'))) matched = hips;
-      
-      if (matched) {
+    const srcBones = [];
+    // Zbierz unikalne nazwy kości z animacji
+    srcClip.tracks.forEach(t => {
+      const bname = t.name.split('.')[0];
+      if (!srcBones.includes(bname)) srcBones.push(bname);
+    });
+
+    for (const track of srcClip.tracks) {
+      const bname = track.name.split('.')[0];
+      const bIndex = srcBones.indexOf(bname);
+      if (bIndex >= 0 && bIndex < bones.length) {
+        const targetBone = bones[bIndex];
+        const prop = track.name.split('.')[1];
+        // Przepisz ścieżkę na nazwę kości z modelu
         const newTrack = track.clone();
-        newTrack.name = matched.name + '.' + track.name.split('.')[1];
+        newTrack.name = targetBone.name + '.' + prop;
         newTracks.push(newTrack);
       }
     }
     if (newTracks.length > 0) {
-      ASSETS.clips[k] = new THREE.AnimationClip(k, clip.duration, newTracks);
-      console.log('[SAS] Retarget', k, newTracks.length, 'tracks');
+      ASSETS.clips[name] = new THREE.AnimationClip(name, srcClip.duration, newTracks);
+      console.log('[SAS] Animacja', name, 'zmapowana:', newTracks.length, 'ścieżek');
     }
+  };
+
+  for(const [k,obj] of Object.entries(objs)){
+    if(k==='model'||!obj.animations)continue;
+    mapClip(obj.animations[0], k);
   }
 
-  // Fallback dla animacji
-  const walkClip = ASSETS.clips.walk;
-  if(!walkClip) throw new Error('brak udanych animacji');
+  if(!ASSETS.clips.walk) throw new Error('nie udało się zmapować animacji');
 
   ASSETS.state='ready';
   ov.style.display='none';
@@ -295,11 +290,13 @@ function mkNPCfbx(x,z){
  n.mixer.update(0.01);
  model.updateMatrixWorld(true);
 
- // Broń
+ // Broń (Pistolet)
  n.gun=new THREE.Group();
  const gb=new THREE.Mesh(new THREE.BoxGeometry(.06,.34,.08),new THREE.MeshStandardMaterial({color:0x222222}));
  gb.position.set(0,0,-.2);n.gun.add(gb);
- n.gun.position.set(Math.sin(n.yaw)*0.3, 1.3, Math.cos(n.yaw)*0.3);
+ // Ustawienie pistoletu na wysokości 1.2m z przodu
+ n.gun.position.set(Math.sin(n.yaw)*0.3, 1.2, Math.cos(n.yaw)*0.3);
+ n.gun.rotation.y=n.yaw;
  g.add(n.gun);
 
  scene.add(g);npcs.push(n);rebuild();
@@ -326,7 +323,7 @@ function fbxAnim(n,dt){
  }
  n.mixer.update(dt);
  if(n.gun){
-  n.gun.position.set(Math.sin(n.yaw)*0.3, 1.3, Math.cos(n.yaw)*0.3);
+  n.gun.position.set(Math.sin(n.yaw)*0.3, 1.2, Math.cos(n.yaw)*0.3);
   n.gun.rotation.y=n.yaw;
  }
 }
@@ -485,7 +482,6 @@ addEventListener('keydown',e=>{
  if(e.code==='KeyR')reload();
  if(e.code==='KeyG'){const n=mkNPC(P.x+Math.sin(yaw)*-6,P.z+Math.cos(yaw)*-6);log('NOWY WRÓG #'+n.i)}
  if(e.code==='KeyX')respawn();
- if(e.code==='KeyH'){dbgOn=!dbgOn;dbg.style.display=dbgOn?'block':'none'}
  if(e.code==='Digit1'){slot=1;hud()}if(e.code==='Digit2'){slot=2;hud()}if(e.code==='Digit3'){slot=3;hud()}
 });
 addEventListener('keyup',e=>{keys[e.code]=false});
