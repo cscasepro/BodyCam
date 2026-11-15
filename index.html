@@ -401,16 +401,53 @@ function thump(v,d){
 const dropG=new THREE.SphereGeometry(.02,6,6),dropM=new THREE.MeshStandardMaterial({color:0x8a0a10,roughness:.25}),
 decG=new THREE.CircleGeometry(1,14),holeG=new THREE.CircleGeometry(.02,8),holeM=new THREE.MeshBasicMaterial({color:0x111111}),
 parts=[],decals=[],holes=[];
+
 function decal(x,z,r){if(decals.length>90)scene.remove(decals.shift());
 const m=new THREE.Mesh(decG,new THREE.MeshBasicMaterial({color:0x4a0205,transparent:true,opacity:.7+R()*.25,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));
 m.rotation.x=-Math.PI/2;m.position.set(x,.015,z);m.scale.setScalar(r*(.7+R()*.9));scene.add(m);decals.push(m)}
+
+// NOWOŚĆ: Dekal krwi na ścianie
+function decalWall(pt, n, r){if(decals.length>90)scene.remove(decals.shift());
+  const m=new THREE.Mesh(decG,new THREE.MeshBasicMaterial({color:0x4a0205,transparent:true,opacity:.7+R()*.25,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));
+  m.position.copy(pt).addScaledVector(n,0.01);
+  m.lookAt(pt.clone().add(n)); // Orientuje płaszczyznę deklu do ściany
+  m.scale.setScalar(r*(.7+R()*.9));
+  scene.add(m);decals.push(m);
+}
+
 function blood(pt,dir,k){if(parts.length>260)return;const n=Math.floor(12+k*16);
 for(let i=0;i<n;i++){const m=new THREE.Mesh(dropG,dropM);m.position.copy(pt);m.scale.setScalar(.7+R()*1.5);scene.add(m);
 const v=dir.clone().multiplyScalar(1.5+R()*4*k);v.x+=(R()-.5)*3*k;v.y+=R()*3*k+.5;v.z+=(R()-.5)*3*k;parts.push({m,v,life:3,r:.05+R()*.1})}}
 function drip(pt){const m=new THREE.Mesh(dropG,dropM);m.position.copy(pt);scene.add(m);parts.push({m,v:V((R()-.5)*.3,-.5,(R()-.5)*.3),life:3,r:.04+R()*.06})}
 function hole(pt,n){if(holes.length>70)scene.remove(holes.shift());const m=new THREE.Mesh(holeG,holeM);m.position.copy(pt).addScaledVector(n,.01);m.lookAt(pt.clone().add(n));scene.add(m);holes.push(m)}
-function updParts(dt){for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.life-=dt;p.v.y-=9.81*dt;p.m.position.addScaledVector(p.v,dt);
-if(p.m.position.y<=.02){decal(p.m.position.x,p.m.position.z,p.r);p.life=0}if(p.life<=0){scene.remove(p.m);parts.splice(i,1)}}}
+
+// NOWOŚĆ: Cząsteczki krwi sprawdzają kolizję ze ścianami, tworząc plamy w pionie
+function updParts(dt){for(let i=parts.length-1;i>=0;i--){
+  const p=parts[i];p.life-=dt;p.v.y-=9.81*dt;p.m.position.addScaledVector(p.v,dt);
+  
+  // Sprawdź czy krew uderza w ścianę (uproszczona wersja)
+  let hitWall = false;
+  for(const o of obst){
+    if(Math.abs(p.m.position.x-o.x) < o.w/2 + 0.05 && Math.abs(p.m.position.z-o.z) < o.d/2 + 0.05){
+      if(p.m.position.y > 0 && p.m.position.y < 3.5){ // Krew na ścianie
+        // Znajdź wektor normalny do najbliższej ściany (uproszczone, wystarczające dla prostopadłościanów)
+        const dx = p.m.position.x-o.x, dz = p.m.position.z-o.z;
+        let n = V(0,0,0);
+        if(Math.abs(dx) > Math.abs(dz)) n.x = Math.sign(dx);
+        else n.z = Math.sign(dz);
+        
+        decalWall(p.m.position.clone(), n, p.r);
+        hitWall = true;
+        break;
+      }
+    }
+  }
+  
+  if(hitWall){p.life=0;scene.remove(p.m);parts.splice(i,1);continue;}
+
+  if(p.m.position.y<=.02){decal(p.m.position.x,p.m.position.z,p.r);p.life=0}
+  if(p.life<=0){scene.remove(p.m);parts.splice(i,1)}
+}}
 
 /* NPC */
 const skins=[0xd8a684,0xc68e6b,0x8d5b3e,0xe2b799,0xa87150];
@@ -457,8 +494,13 @@ function mkNPC(x,z){
   scene.add(g);npcs.push(n);rebuild();return n;
 }
 const wrap=a=>{while(a>Math.PI)a-=6.283;while(a<-Math.PI)a+=6.283;return a};
+
+// NOWOŚĆ: Realistyczne odrzucenie trupa z kolizją ze ścianami
 function kill(n,dir){
-  n.dead=true;kills++;n.vel.copy(dir).multiplyScalar(1.8);n.vel.y=0;n.gun.visible=false;
+  n.dead=true;kills++;n.gun.visible=false;
+  // Uderzenie od kuli nadaje pęd
+  n.vel.copy(dir).multiplyScalar(3.5); n.vel.y = 0; 
+  
   const f=Math.sin(n.yaw)*dir.x+Math.cos(n.yaw)*dir.z,s=Math.cos(n.yaw)*dir.x-Math.sin(n.yaw)*dir.z,t=Math.abs(f)>.45?0:1;
   n.tx=t?0:(f<0?-1.55:1.55);n.tz=t?(s>0?-1.55:1.55):0;n.spin=(R()-.5)*(t?2:5);n.fs=2+R()*2.2;n.fall=0;
   n.lv=['armL','armR','legL','legR'].map(()=>({vx:(R()-.5)*16,vz:(R()-.5)*9,tx:(R()-.5)*2,tz:(R()<.5?-1:1)*(.3+R()*.9)}));
@@ -468,6 +510,7 @@ function kill(n,dir){
   n.pool=new THREE.Mesh(decG,new THREE.MeshBasicMaterial({color:0x3a0204,transparent:true,opacity:.92,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3}));
   n.pool.rotation.x=-Math.PI/2;n.pool.scale.setScalar(.01);n.pool.visible=false;scene.add(n.pool);n.pr=0;
 }
+
 function hitNPC(n,part,pt,dir,dmg){
   if(n.dead){blood(pt,dir,.4);return 'TRAFIENIE W ZWŁOKI'}
   const head=part==='head';blood(pt,dir,head?2.2:1);
@@ -480,6 +523,7 @@ function hitNPC(n,part,pt,dir,dmg){
   if(n.state==='surrender'||n.state==='kneel'){n.state='combat';n.armed=true;n.gun.visible=true;n.kneel=0;n.hands=0}
   n.state='combat';n.aim=0;n.lost=0;return 'TRAFIONY '+part+' ['+(n.hp|0)+' HP]';
 }
+
 function updNPC(n,dt){
   const g=n.g;
   n.head.getWorldPosition(tmp);tc.copy(cam.position).sub(tmp).normalize();
@@ -487,7 +531,23 @@ function updNPC(n,dt){
   if(n.dead){
     n.fall=Math.min(1,n.fall+dt*n.fs);const e=1-Math.pow(1-n.fall,3);
     g.rotation.x=n.tx*e;g.rotation.z=n.tz*e;g.rotation.y+=n.spin*dt*(1-n.fall);
-    g.position.y=(n.tz?.22:.16)*e;g.position.addScaledVector(n.vel,dt);n.vel.multiplyScalar(Math.max(0,1-dt*3));
+    g.position.y=(n.tz?.22:.16)*e;
+    
+    // NOWOŚĆ: Trup ślizga się po podłodze i odbija od ścian
+    n.vel.multiplyScalar(Math.max(0,1-dt*4));
+    g.position.addScaledVector(n.vel,dt);
+    
+    // Kolizja ze ścianami dla trupa
+    for(const o of obst){
+      const dx = g.position.x - o.x, dz = g.position.z - o.z;
+      const hx = o.w/2 + 0.4, hz = o.d/2 + 0.4;
+      if(Math.abs(dx) < hx && Math.abs(dz) < hz){
+        const px = hx - Math.abs(dx), pz = hz - Math.abs(dz);
+        if(px < pz){ g.position.x += (dx < 0 ? -1 : 1) * px; n.vel.x *= -0.4; }
+        else { g.position.z += (dz < 0 ? -1 : 1) * pz; n.vel.z *= -0.4; }
+      }
+    }
+
     ['armL','armR','legL','legR'].forEach((k,i)=>{const s=n.lv[i],p=n[k];
       s.vx+=((s.tx-p.rotation.x)*40-s.vx*5)*dt;s.vz+=((s.tz-p.rotation.z)*40-s.vz*5)*dt;
       p.rotation.x+=s.vx*dt;p.rotation.z+=s.vz*dt;
@@ -499,6 +559,8 @@ function updNPC(n,dt){
     if(n.bleed>0){n.bleed-=dt;n.dc=(n.dc||0)-dt;if(n.dc<=0){n.dc=.15;n.head.getWorldPosition(tmp);drip(tmp)}}
     return;
   }
+  
+  // ... reszta kodu AI bez zmian ...
   const to=P.clone().sub(g.position);to.y=0;const dist=to.length(),k=Math.min(1,dt*10);
   let moving=0,aimPose=false;
   const fwd=V(Math.sin(n.yaw),0,Math.cos(n.yaw)),right=V(Math.cos(n.yaw),0,-Math.sin(n.yaw)),dn=to.clone().normalize();
@@ -707,11 +769,14 @@ function fire(){
   w.ammo--;cd=w.rate;recoil+=w.kick;pitch+=w.kick*.45;yaw+=(R()-.5)*.014;shake=.016;U.flash.value=.5;
   mzl.position.set(0,.02,w.mz);mzl.intensity=6;flashT=.045;
   
+  // NATYCHMIASTOWY DŹWIĘK (rozwiązuje problem opóźnienia)
+  tone(slot===1?180:140, 40, .15, .6, 'square');
+  
   if(slot===1) playSfx('gun_pistol', cam.position.clone(), 1.5, 1); 
   else if(slot===2) playSfx('gun_rifle', cam.position.clone(), 1.2, 1); 
-  else tone(slot===3?95:slot===2?140:180,30,.3,.8,'triangle'); 
   
   nz(.4,.6);
+  scene.updateMatrixWorld(); // KLUCZOWA POPRAWKA: Aktualizacja macierzy przed raycastem
   
   const rayTargets = allHit.concat(obstM);
   
@@ -821,10 +886,9 @@ function setupMenu(){
 }
 setupMenu();
 
-// NAPRAWA CZARNEGO EKRANU: Natychmiastowe odświeżenie i start po kliknięciu
 $('startBtn').onclick=()=>{
-  $('mainMenu').classList.add('hidden'); // Ukrywa menu
-  resize(); // KLUCZOWE: ustawia wymiary renderera po zniknięciu menu
+  $('mainMenu').classList.add('hidden');
+  resize();
   
   initAudio();
   loadAudios();
@@ -843,16 +907,13 @@ $('startBtn').onclick=()=>{
     },3000);
   });
   
-  lock(); // Odpala Pointer Lock
+  lock();
 };
 
 /* INPUT */
 const lock=()=>{box.requestPointerLock&&box.requestPointerLock()};
 $('go').onclick=lock;
-
-// KLUCZOWA POPRAWKA: Pozwala kliknąć w ekran i wznowić grę po naciśnięciu ESC
 renderer.domElement.onclick=()=>{if(!locked&&!dead&&$('mainMenu').classList.contains('hidden'))lock()};
-
 document.addEventListener('pointerlockchange',()=>{
   locked=document.pointerLockElement===box;fb=false;
   if(locked)$('modal').classList.add('off');
